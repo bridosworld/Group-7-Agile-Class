@@ -12,12 +12,14 @@ In the project folder, create and activate a virtual environment:
 
 (Git Bash):
 python -m venv .venv
+
+(Git Bash):
 source .venv/Scripts/activate
 
 Install the required packages:
 pip install flask flask-sqlalchemy flask-marshmallow marshmallow-sqlalchemy
 
-Start the API:
+Start API:
 python app.py
 
 The server will run at:
