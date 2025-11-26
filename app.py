@@ -14,7 +14,6 @@ app = Flask(__name__)
 
 app.config['JSON_AS_ASCII'] = False
 
-
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///terrascope_dev.db"
 app.config["SQLALCHEMY_ECHO"] = True  
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -22,9 +21,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
-# ===============================
-# US-19: Example model (Dataset)
-# ===============================
+# US-19 Example
 
 class Dataset(db.Model):
     __tablename__ = "datasets"
@@ -44,7 +41,7 @@ class DatasetSchema(ma.SQLAlchemyAutoSchema):
 dataset_schema = DatasetSchema()
 datasets_schema = DatasetSchema(many=True)
 
-# US-19: 
+# US-19
 tables_created = False
 
 @app.before_request
@@ -53,7 +50,6 @@ def create_tables_once():
     if not tables_created:
         db.create_all()
         tables_created = True
-
 
 @app.errorhandler(400)
 def bad_request(error):
