@@ -10,7 +10,7 @@ import json
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 
-app = Flask(__name__)
+
 
 app.config['JSON_AS_ASCII'] = False
 
