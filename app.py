@@ -5,13 +5,6 @@ from flask_marshmallow import Marshmallow
 
 app = Flask(__name__)
 
-from flask import Flask, jsonify, request
-import json
-from flask_sqlalchemy import SQLAlchemy
-from flask_marshmallow import Marshmallow
-
-app = Flask(__name__)
-
 app.config['JSON_AS_ASCII'] = False
 
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///terrascope_dev.db"
