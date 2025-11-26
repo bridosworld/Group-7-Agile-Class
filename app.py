@@ -40,7 +40,7 @@ def unauthorized(error):
 def forbidden(error):
     return jsonify({
         "error": "Forbidden",
-        "message": error.description or "This Access is denied",
+        "message": error.description or "This Access is denied!",
         "code": 403
     }), 403
 
