@@ -5,6 +5,61 @@ from flask_marshmallow import Marshmallow
 
 app = Flask(__name__)
 
+# Secret key for signing JWT tokens
+app.config["SECRET_KEY"] = "CHANGE_ME_SECRET_KEY"
+
+# In-memory demo user (you can replace this with DB later)
+DEMO_USER = {
+    "username": "admin",
+    "password": "password123"  # plain only for demo – normally you hash it
+}
+
+# -----------------------------
+# JWT AUTH IMPLEMENTATION
+# -----------------------------
+
+def create_token(username):
+    """
+    Creates a JWT token valid for 1 hour.
+    """
+    payload = {
+        "username": username,
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+    }
+
+    return jwt.encode(payload, app.config["SECRET_KEY"], algorithm="HS256")
+
+
+def jwt_required(fn):
+    """
+    Decorator to protect routes.
+    Requires: Authorization: Bearer <token>
+    """
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        auth_header = request.headers.get("Authorization")
+
+        if not auth_header:
+            return jsonify({
+                "error": "Missing Authorization Header",
+                "message": "Provide token in format: Bearer <token>"
+            }), 401
+
+        try:
+            token = auth_header.split(" ")[1]
+            decoded = jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
+            request.user = decoded["username"]
+        except Exception:
+            return jsonify({
+                "error": "Invalid or expired token",
+                "message": "Login again to get a new token"
+            }), 401
+
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
 from flask import Flask, jsonify, request
 import json
 from flask_sqlalchemy import SQLAlchemy
@@ -123,6 +178,31 @@ def service_unavailable(error):
         "code": 503
     }), 503
 
+# -----------------------------
+# AUTH ROUTES
+# -----------------------------
+
+@app.post("/auth/login")
+def login():
+    """
+    Login route – returns JWT token if credentials are valid.
+    """
+    data = request.get_json() or {}
+    username = data.get("username")
+    password = data.get("password")
+
+    if username != DEMO_USER["username"] or password != DEMO_USER["password"]:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    token = create_token(username)
+
+    return jsonify({
+        "access_token": token,
+        "token_type": "Bearer",
+        "expires_in": "1 hour"
+    })
+
+
 @app.get("/health")
 def health():
     return jsonify({"status": "ok"}), 200
@@ -207,6 +287,20 @@ def test_server_error():
 def test_unavailable():
     from werkzeug.exceptions import ServiceUnavailable
     raise ServiceUnavailable("Service is temporarily unavailable")
+
+# -----------------------------
+# EXAMPLE PROTECTED ROUTE
+# -----------------------------
+
+@app.get("/secure-data")
+@jwt_required
+def secure_data():
+    return jsonify({
+        "message": "You are authenticated",
+        "user": request.user,
+        "data": ["secret-1", "secret-2"]
+    })
+
 
 if __name__ == "__main__":
     app.run(debug=True)
