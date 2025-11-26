@@ -5,7 +5,55 @@ from flask_marshmallow import Marshmallow
 
 app = Flask(__name__)
 
+from flask import Flask, jsonify, request
+import json
+from flask_sqlalchemy import SQLAlchemy
+from flask_marshmallow import Marshmallow
+
+app = Flask(__name__)
+
 app.config['JSON_AS_ASCII'] = False
+
+
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///terrascope_dev.db"
+app.config["SQLALCHEMY_ECHO"] = True  
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
+ma = Marshmallow(app)
+
+# ===============================
+# US-19: Example model (Dataset)
+# ===============================
+
+class Dataset(db.Model):
+    __tablename__ = "datasets"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.String(255), nullable=True)
+
+    def __repr__(self):
+        return f"<Dataset {self.id} - {self.name}>"
+
+class DatasetSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Dataset
+        load_instance = True
+
+dataset_schema = DatasetSchema()
+datasets_schema = DatasetSchema(many=True)
+
+# US-19: 
+tables_created = False
+
+@app.before_request
+def create_tables_once():
+    global tables_created
+    if not tables_created:
+        db.create_all()
+        tables_created = True
+
 
 @app.errorhandler(400)
 def bad_request(error):
@@ -90,7 +138,14 @@ def root():
         "status": "ok"
     }), 200
 
+# US-07: Standard HTTP Methods on /items doing DUMMY LIST FOR NOW.
 
+@app.get("/items")
+def get_items():
+    return jsonify({
+        "message": "GET OK",
+        "items": []
+    }), 200
 
 @app.post("/items")
 def create_item():
