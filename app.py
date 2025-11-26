@@ -90,14 +90,7 @@ def root():
         "status": "ok"
     }), 200
 
-# US-07: Standard HTTP Methods on /items doing DUMMY LIST FOR NOW.
 
-@app.get("/items")
-def get_items():
-    return jsonify({
-        "message": "GET OK",
-        "items": []
-    }), 200
 
 @app.post("/items")
 def create_item():
@@ -129,7 +122,6 @@ def delete_item(item_id):
         "id": item_id,
         "details": "Item deleted (dummy)"
     }), 200
-
 
 @app.post("/test-bad-request")
 def test_bad_request():
