@@ -90,7 +90,7 @@ def root():
         "status": "ok"
     }), 200
 
-# US-07: Standard HTTP Methods on /items doing DUMMY LIST FOR NOW
+# US-07: Standard HTTP Methods on /items doing DUMMY LIST FOR NOW.
 
 @app.get("/items")
 def get_items():
