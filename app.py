@@ -4,6 +4,7 @@ import jwt
 from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from datetime import datetime  # For date parsing in filtering
 
 app = Flask(__name__)
 
@@ -20,7 +21,8 @@ db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
 # -----------------------------
-# DATABASE MODEL + SCHEMA
+# DATABASE MODELS + SCHEMAS
+# US-19: Dataset Model + US-10: Observation Model
 # -----------------------------
 class Dataset(db.Model):
     __tablename__ = "datasets"
@@ -40,17 +42,41 @@ class DatasetSchema(ma.SQLAlchemyAutoSchema):
 dataset_schema = DatasetSchema()
 datasets_schema = DatasetSchema(many=True)
 
+# US-10: Observation Model (for satellite data with filtering support)
+class Observation(db.Model):
+    __tablename__ = "observations"
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False)  # ISO 8601 via datetime
+    timezone = db.Column(db.String(50), nullable=True)
+    coordinates = db.Column(db.String(100), nullable=True)  # e.g., "lat=40.7,long=-74.0"
+    satellite_id = db.Column(db.String(50), nullable=True)
+    spectral_indices = db.Column(db.Text, nullable=True)  # Can store as JSON string
+    notes = db.Column(db.Text, nullable=True)
+
+    def __repr__(self):
+        return f"<Observation {self.id} - {self.timestamp}>"
+
+class ObservationSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Observation
+        load_instance = True
+
+observation_schema = ObservationSchema()
+observations_schema = ObservationSchema(many=True)
+
+# US-19: Create database tables once
 tables_created = False
 @app.before_request
 def create_tables_once():
     global tables_created
     if not tables_created:
-        db.create_all()
+        db.create_all()  # Creates both datasets and observations tables
         tables_created = True
 
-# -----------------------------
+# ============================================
 # JWT IMPLEMENTATION
-# -----------------------------
+# ============================================
 DEMO_USER = {"username": "admin", "password": "password123"}
 
 def create_token(username):
@@ -81,9 +107,9 @@ def jwt_required(fn):
         return fn(*args, **kwargs)
     return wrapper
 
-# -----------------------------
-# ERROR HANDLERS
-# -----------------------------
+# ============================================
+# ERROR HANDLERS (9 total)
+# ============================================
 @app.errorhandler(400)
 def bad_request(error):
     return jsonify({"error": "Bad Request", "message": error.description or "Your input is invalid", "code": 400}), 400
@@ -120,9 +146,24 @@ def internal_error(error):
 def service_unavailable(error):
     return jsonify({"error": "Service Unavailable", "message": error.description or "Server temporarily down", "code": 503}), 503
 
-# -----------------------------
-# PUBLIC ROUTES
-# -----------------------------
+# Force 500 handler to work even in debug mode
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Pass through HTTP exceptions (like 404, 401, etc.)
+    from werkzeug.exceptions import HTTPException
+    if isinstance(e, HTTPException):
+        return e
+    
+    # Now handle non-HTTP exceptions (like our simulated crash)
+    return jsonify({
+        "error": "Internal Server Error",
+        "message": "Something went wrong, try again later",
+        "code": 500
+    }), 500
+
+# ============================================
+# MAIN ENDPOINTS
+# ============================================
 @app.get("/health")
 def health():
     return jsonify({"status": "ok"}), 200
@@ -140,6 +181,8 @@ def login():
         return jsonify({"error": "Invalid credentials"}), 401
     token = create_token(username)
     return jsonify({"access_token": token, "token_type": "Bearer", "expires_in": "1 hour"})
+
+# US-07: Standard HTTP Methods on /items
 
 # -----------------------------
 # DUMMY ITEM ROUTES
@@ -164,9 +207,57 @@ def patch_item(item_id):
 def delete_item(item_id):
     return jsonify({"message": "DELETE OK", "id": item_id, "details": "Item deleted (dummy)"}), 200
 
-# -----------------------------
-# TEST ERRORS
-# -----------------------------
+# US-09: GET /observations with filtering support
+
+@app.get("/observations")
+def get_observations():
+    # Start with all records
+    query = Observation.query
+
+    # US-09: Parameter-based filtering via query params
+    start_date_str = request.args.get('start_date')  # e.g., "2025-11-01T00:00:00"
+    end_date_str = request.args.get('end_date')      # e.g., "2025-11-30T23:59:59"
+    lat_str = request.args.get('lat')               # e.g., "40.7"
+    long_str = request.args.get('long')             # e.g., "-74.0"
+
+    # Date range filtering
+    if start_date_str:
+        try:
+            start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+            query = query.filter(Observation.timestamp >= start_date)
+        except ValueError:
+            return jsonify({
+                "error": "Invalid start_date format. Use ISO 8601 (e.g., 2025-11-01T00:00:00)",
+                "code": 400
+            }), 400
+
+    if end_date_str:
+        try:
+            end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+            query = query.filter(Observation.timestamp <= end_date)
+        except ValueError:
+            return jsonify({
+                "error": "Invalid end_date format. Use ISO 8601 (e.g., 2025-11-30T23:59:59)",
+                "code": 400
+            }), 400
+
+    # Location filtering
+    if lat_str and long_str:
+        location_filter = f"lat={lat_str},long={long_str}"
+        query = query.filter(Observation.coordinates == location_filter)
+    elif lat_str or long_str:
+        return jsonify({
+            "error": "Both 'lat' and 'long' parameters are required for location filtering",
+            "code": 400
+        }), 400
+
+    # Execute query and serialize to JSON
+    results = query.all()
+    return jsonify(observations_schema.dump(results)), 200
+
+# ============================================
+# TEST ENDPOINTS (For verifying error handlers)
+# ============================================
 @app.post("/test-bad-request")
 def test_bad_request():
     from werkzeug.exceptions import BadRequest
