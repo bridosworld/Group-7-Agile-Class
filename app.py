@@ -145,6 +145,21 @@ def service_unavailable(error):
         "code": 503
     }), 503
 
+# Force 500 handler to work even in debug mode
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Pass through HTTP exceptions (like 404, 401, etc.)
+    from werkzeug.exceptions import HTTPException
+    if isinstance(e, HTTPException):
+        return e
+    
+    # Now handle non-HTTP exceptions (like our simulated crash)
+    return jsonify({
+        "error": "Internal Server Error",
+        "message": "Something went wrong, try again later",
+        "code": 500
+    }), 500
+
 # ============================================
 # MAIN ENDPOINTS
 # ============================================
