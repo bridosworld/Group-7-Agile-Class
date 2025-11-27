@@ -1,22 +1,35 @@
 from flask import Flask, jsonify, request
-import json
+import datetime
+import jwt
+from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from datetime import datetime  # For date parsing in filtering
+from werkzeug.security import generate_password_hash, check_password_hash  # For password hashing
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, verify_jwt_in_request
 
 app = Flask(__name__)
 
-app.config['JSON_AS_ASCII'] = False
+# US-13: JWT Configuration (use a strong secret in production; generate via os.urandom(24))
+app.config['JWT_SECRET_KEY'] = 'terra-scope-super-secret-key-2025'  # Dev key; change for prod
+jwt = JWTManager(app)
 
+# -----------------------------
+# CONFIG
+# -----------------------------
+app.config['JSON_AS_ASCII'] = False
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///terrascope_dev.db"
 app.config["SQLALCHEMY_ECHO"] = True  
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SECRET_KEY"] = "CHANGE_ME_SECRET_KEY"  # JWT secret
 
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
-# US-19: Dataset Model
-
+# -----------------------------
+# DATABASE MODELS + SCHEMAS
+# US-19: Dataset Model + US-10: Observation Model
+# -----------------------------
 class Dataset(db.Model):
     __tablename__ = "datasets"
 
@@ -36,7 +49,6 @@ dataset_schema = DatasetSchema()
 datasets_schema = DatasetSchema(many=True)
 
 # US-10: Observation Model (for satellite data with filtering support)
-
 class Observation(db.Model):
     __tablename__ = "observations"
 
@@ -59,91 +71,93 @@ class ObservationSchema(ma.SQLAlchemyAutoSchema):
 observation_schema = ObservationSchema()
 observations_schema = ObservationSchema(many=True)
 
-# US-19: Create database tables once
-tables_created = False
+# US-13: User Model (for authentication; stores hashed passwords)
+class User(db.Model):
+    __tablename__ = "users"
 
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(120), nullable=False)  # Hashed password
+
+    def __repr__(self):
+        return f"<User {self.username}>"
+
+    # Helper to set hashed password
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    # Helper to check password
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+# US-13: Marshmallow schema for User (for potential serialization; not strictly needed but aligns with style)
+class UserSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = User
+        load_instance = True
+        exclude = ('password_hash',)  # Never expose hash
+
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)
+
+# US-19: Create database tables once (now includes users)
+tables_created = False
 @app.before_request
 def create_tables_once():
     global tables_created
     if not tables_created:
-        db.create_all()  # Creates both datasets and observations tables
+        db.create_all()  # Creates datasets, observations, and users tables
+        # US-13: Seed a test user if none exist (username: 'testuser', password: 'testpass' – remove for prod)
+        if User.query.count() == 0:
+            test_user = User(username='testuser')
+            test_user.set_password('testpass')
+            db.session.add(test_user)
+            db.session.commit()
         tables_created = True
+
+# ============================================
+# JWT IMPLEMENTATION (now using flask-jwt-extended)
+# ============================================
+# JWT config and User model are above; login endpoint and protected routes below
 
 # ============================================
 # ERROR HANDLERS (9 total)
 # ============================================
-
 @app.errorhandler(400)
 def bad_request(error):
-    return jsonify({
-        "error": "Bad Request",
-        "message": error.description or "Your input is invalid",
-        "code": 400
-    }), 400
+    return jsonify({"error": "Bad Request", "message": error.description or "Your input is invalid", "code": 400}), 400
 
 @app.errorhandler(401)
 def unauthorized(error):
-    return jsonify({
-        "error": "Unauthorized",
-        "message": error.description or "Your Authentication is required",
-        "code": 401
-    }), 401
+    return jsonify({"error": "Unauthorized", "message": error.description or "Authentication required", "code": 401}), 401
 
 @app.errorhandler(403)
 def forbidden(error):
-    return jsonify({
-        "error": "Forbidden",
-        "message": error.description or "This Access is denied",
-        "code": 403
-    }), 403
+    return jsonify({"error": "Forbidden", "message": error.description or "Access denied", "code": 403}), 403
 
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({
-        "error": "Not Found",
-        "message": error.description or "The endpoint you requested does not exist",
-        "code": 404
-    }), 404
+    return jsonify({"error": "Not Found", "message": error.description or "Endpoint not found", "code": 404}), 404
 
 @app.errorhandler(405)
 def method_not_allowed(error):
-    return jsonify({
-        "error": "Method Not Allowed",
-        "message": "Use GET for this particular endpoint",
-        "code": 405
-    }), 405
+    return jsonify({"error": "Method Not Allowed", "message": "Use valid HTTP method", "code": 405}), 405
 
 @app.errorhandler(422)
 def unprocessable_entity(error):
-    return jsonify({
-        "error": "Unprocessable Entity",
-        "message": error.description or "This Validation failed",
-        "code": 422
-    }), 422
+    return jsonify({"error": "Unprocessable Entity", "message": error.description or "Validation failed", "code": 422}), 422
 
 @app.errorhandler(429)
 def too_many_requests(error):
-    return jsonify({
-        "error": "Too Many Requests",
-        "message": error.description or "You have exceeded the limit, please wait before retrying",
-        "code": 429
-    }), 429
+    return jsonify({"error": "Too Many Requests", "message": error.description or "Rate limit exceeded", "code": 429}), 429
 
 @app.errorhandler(500)
 def internal_error(error):
-    return jsonify({
-        "error": "Internal Server Error",
-        "message": "Something went wrong, try again later",
-        "code": 500
-    }), 500
+    return jsonify({"error": "Internal Server Error", "message": "Something went wrong", "code": 500}), 500
 
 @app.errorhandler(503)
 def service_unavailable(error):
-    return jsonify({
-        "error": "Service Unavailable",
-        "message": error.description or "The Server is temporarily down",
-        "code": 503
-    }), 503
+    return jsonify({"error": "Service Unavailable", "message": error.description or "Server temporarily down", "code": 503}), 503
 
 # Force 500 handler to work even in debug mode
 @app.errorhandler(Exception)
@@ -163,62 +177,86 @@ def handle_exception(e):
 # ============================================
 # MAIN ENDPOINTS
 # ============================================
-
 @app.get("/health")
 def health():
     return jsonify({"status": "ok"}), 200
 
 @app.get("/")
 def root():
+    return jsonify({"message": "TerraScope API is running", "status": "ok"}), 200
+
+@app.post("/auth/login")
+def login():
+    data = request.get_json()
+    if not data or 'username' not in data or 'password' not in data:
+        return jsonify({
+            "error": "Missing username or password",
+            "code": 400
+        }), 400
+
+    username = data['username']
+    password = data['password']
+
+    user = User.query.filter_by(username=username).first()
+    if user and user.check_password(password):
+        # Create access token (expires in 30 min; configurable)
+        access_token = create_access_token(identity=user.id, expires_delta=None)  # Default 15 min; set to None for longer
+        return jsonify({
+            "access_token": access_token,
+            "token_type": "Bearer",
+            "user_id": user.id,
+            "message": "Login successful"
+        }), 200
+    else:
+        return jsonify({
+            "error": "Invalid username or password",
+            "code": 401
+        }), 401
+
+# US-13: GET /protected (simple protected endpoint for testing)
+@app.get("/protected")
+@jwt_required()  # Requires valid JWT in Authorization: Bearer <token>
+def protected():
+    current_user_id = get_jwt_identity()
     return jsonify({
-        "message": "TerraScope API is running",
-        "status": "ok"
+        "message": "Access granted",
+        "user_id": current_user_id
     }), 200
 
 # US-07: Standard HTTP Methods on /items
 
+# -----------------------------
+# DUMMY ITEM ROUTES
+# -----------------------------
 @app.get("/items")
 def get_items():
-    return jsonify({
-        "message": "GET OK",
-        "items": []
-    }), 200
+    return jsonify({"message": "GET OK", "items": []}), 200
 
 @app.post("/items")
 def create_item():
-    return jsonify({
-        "message": "POST OK",
-        "details": "Item created (dummy)"
-    }), 201
+    return jsonify({"message": "POST OK", "details": "Item created (dummy)"}), 201
 
 @app.put("/items/<int:item_id>")
 def update_item(item_id):
-    return jsonify({
-        "message": "PUT OK",
-        "id": item_id,
-        "details": "Full update completed (dummy)"
-    }), 200
+    return jsonify({"message": "PUT OK", "id": item_id, "details": "Full update completed (dummy)"}), 200
 
 @app.patch("/items/<int:item_id>")
 def patch_item(item_id):
-    return jsonify({
-        "message": "PATCH OK",
-        "id": item_id,
-        "details": "Partial update completed (dummy)"
-    }), 200
+    return jsonify({"message": "PATCH OK", "id": item_id, "details": "Partial update completed (dummy)"}), 200
 
 @app.delete("/items/<int:item_id>")
 def delete_item(item_id):
-    return jsonify({
-        "message": "DELETE OK",
-        "id": item_id,
-        "details": "Item deleted (dummy)"
-    }), 200
+    return jsonify({"message": "DELETE OK", "id": item_id, "details": "Item deleted (dummy)"}), 200
 
 # US-09: GET /observations with filtering support
 
 @app.get("/observations")
+@jwt_required()  # US-13: Protect with JWT; no token → 401
 def get_observations():
+    # Optional: Get user ID from token for logging/auditing
+    current_user_id = get_jwt_identity()
+    # (You could add user-specific filtering here later, e.g., query.filter_by(user_id=current_user_id))
+
     # Start with all records
     query = Observation.query
 
@@ -266,7 +304,6 @@ def get_observations():
 # ============================================
 # TEST ENDPOINTS (For verifying error handlers)
 # ============================================
-
 @app.post("/test-bad-request")
 def test_bad_request():
     from werkzeug.exceptions import BadRequest
@@ -301,5 +338,15 @@ def test_unavailable():
     from werkzeug.exceptions import ServiceUnavailable
     raise ServiceUnavailable("Service is temporarily unavailable")
 
+# ============================================
+# NOTES
+# ============================================
+# Use @jwt_required() decorator on any endpoint that needs JWT protection
+# Test with: curl -H "Authorization: Bearer <token>" http://localhost:5000/observations
+# Get token from /auth/login endpoint (POST with username and password)
+
+# -----------------------------
+# RUN SERVER
+# -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
