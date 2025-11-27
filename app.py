@@ -5,8 +5,8 @@ from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from datetime import datetime  # For date parsing in filtering
-from werkzeug.security import generate_password_hash, check_password_hash  # For password hashing
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, verify_jwt_in_request
+from werkzeug.security import generate_password_hash, check_password_hash  # For password hashing    
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, verify_jwt_in_request  
 
 app = Flask(__name__)
 
