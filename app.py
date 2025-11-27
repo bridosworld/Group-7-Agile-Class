@@ -2,23 +2,24 @@ from flask import Flask, jsonify, request
 import json
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
-from flasgger import Swagger
 from datetime import datetime  # For date parsing in filtering
+from flasgger import Swagger
 
 app = Flask(__name__)
-# Swagger config
+
+# US-06: Swagger / OpenAPI configuration
 app.config['SWAGGER'] = {
-    'title': 'TerraScope API',
-    'uiversion': 3
+    "title": "TerraScope API",
+    "uiversion": 3,
+    "specs_route": "/docs/"
 }
 
 swagger = Swagger(app)
 
-
 app.config['JSON_AS_ASCII'] = False
 
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///terrascope_dev.db"
-app.config["SQLALCHEMY_ECHO"] = True  
+app.config["SQLALCHEMY_ECHO"] = True
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -36,10 +37,12 @@ class Dataset(db.Model):
     def __repr__(self):
         return f"<Dataset {self.id} - {self.name}>"
 
+
 class DatasetSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Dataset
         load_instance = True
+
 
 dataset_schema = DatasetSchema()
 datasets_schema = DatasetSchema(many=True)
@@ -60,10 +63,12 @@ class Observation(db.Model):
     def __repr__(self):
         return f"<Observation {self.id} - {self.timestamp}>"
 
+
 class ObservationSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Observation
         load_instance = True
+
 
 observation_schema = ObservationSchema()
 observations_schema = ObservationSchema(many=True)
@@ -71,12 +76,14 @@ observations_schema = ObservationSchema(many=True)
 # US-19: Create database tables once
 tables_created = False
 
+
 @app.before_request
 def create_tables_once():
     global tables_created
     if not tables_created:
         db.create_all()  # Creates both datasets and observations tables
         tables_created = True
+
 
 # ============================================
 # ERROR HANDLERS (9 total)
@@ -90,6 +97,7 @@ def bad_request(error):
         "code": 400
     }), 400
 
+
 @app.errorhandler(401)
 def unauthorized(error):
     return jsonify({
@@ -97,6 +105,7 @@ def unauthorized(error):
         "message": error.description or "Your Authentication is required",
         "code": 401
     }), 401
+
 
 @app.errorhandler(403)
 def forbidden(error):
@@ -106,6 +115,7 @@ def forbidden(error):
         "code": 403
     }), 403
 
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({
@@ -113,6 +123,7 @@ def not_found(error):
         "message": error.description or "The endpoint you requested does not exist",
         "code": 404
     }), 404
+
 
 @app.errorhandler(405)
 def method_not_allowed(error):
@@ -122,6 +133,7 @@ def method_not_allowed(error):
         "code": 405
     }), 405
 
+
 @app.errorhandler(422)
 def unprocessable_entity(error):
     return jsonify({
@@ -129,6 +141,7 @@ def unprocessable_entity(error):
         "message": error.description or "This Validation failed",
         "code": 422
     }), 422
+
 
 @app.errorhandler(429)
 def too_many_requests(error):
@@ -138,6 +151,7 @@ def too_many_requests(error):
         "code": 429
     }), 429
 
+
 @app.errorhandler(500)
 def internal_error(error):
     return jsonify({
@@ -145,6 +159,7 @@ def internal_error(error):
         "message": "Something went wrong, try again later",
         "code": 500
     }), 500
+
 
 @app.errorhandler(503)
 def service_unavailable(error):
@@ -154,6 +169,7 @@ def service_unavailable(error):
         "code": 503
     }), 503
 
+
 # Force 500 handler to work even in debug mode
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -161,13 +177,14 @@ def handle_exception(e):
     from werkzeug.exceptions import HTTPException
     if isinstance(e, HTTPException):
         return e
-    
+
     # Now handle non-HTTP exceptions (like our simulated crash)
     return jsonify({
         "error": "Internal Server Error",
         "message": "Something went wrong, try again later",
         "code": 500
     }), 500
+
 
 # ============================================
 # MAIN ENDPOINTS
@@ -200,50 +217,205 @@ def root():
         "status": "ok"
     }), 200
 
+
 # US-07: Standard HTTP Methods on /items
 
 @app.get("/items")
 def get_items():
+    """
+    Get all items (demo)
+    ---
+    tags:
+      - Items
+    responses:
+      200:
+        description: Returns a dummy list of items
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            items:
+              type: array
+              items:
+                type: object
+    """
     return jsonify({
         "message": "GET OK",
         "items": []
     }), 200
 
+
 @app.post("/items")
 def create_item():
+    """
+    Create an item (demo)
+    ---
+    tags:
+      - Items
+    responses:
+      201:
+        description: Dummy item created
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            details:
+              type: string
+    """
     return jsonify({
         "message": "POST OK",
         "details": "Item created (dummy)"
     }), 201
 
+
 @app.put("/items/<int:item_id>")
 def update_item(item_id):
+    """
+    Full update of an item (demo)
+    ---
+    tags:
+      - Items
+    parameters:
+      - name: item_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the item to update
+    responses:
+      200:
+        description: Dummy item updated
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            id:
+              type: integer
+            details:
+              type: string
+    """
     return jsonify({
         "message": "PUT OK",
         "id": item_id,
         "details": "Full update completed (dummy)"
     }), 200
 
+
 @app.patch("/items/<int:item_id>")
 def patch_item(item_id):
+    """
+    Partial update of an item (demo)
+    ---
+    tags:
+      - Items
+    parameters:
+      - name: item_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the item to patch
+    responses:
+      200:
+        description: Dummy item partially updated
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            id:
+              type: integer
+            details:
+              type: string
+    """
     return jsonify({
         "message": "PATCH OK",
         "id": item_id,
         "details": "Partial update completed (dummy)"
     }), 200
 
+
 @app.delete("/items/<int:item_id>")
 def delete_item(item_id):
+    """
+    Delete an item (demo)
+    ---
+    tags:
+      - Items
+    parameters:
+      - name: item_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the item to delete
+    responses:
+      200:
+        description: Dummy item deleted
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            id:
+              type: integer
+            details:
+              type: string
+    """
     return jsonify({
         "message": "DELETE OK",
         "id": item_id,
         "details": "Item deleted (dummy)"
     }), 200
 
+
 # US-09: GET /observations with filtering support
 
 @app.get("/observations")
 def get_observations():
+    """
+    Get observations with optional filters
+    ---
+    tags:
+      - Observations
+    parameters:
+      - name: start_date
+        in: query
+        type: string
+        required: false
+        description: ISO 8601 start of timestamp range (e.g., 2025-11-01T00:00:00)
+      - name: end_date
+        in: query
+        type: string
+        required: false
+        description: ISO 8601 end of timestamp range (e.g., 2025-11-30T23:59:59)
+      - name: lat
+        in: query
+        type: string
+        required: false
+        description: Latitude used in coordinates filter
+      - name: long
+        in: query
+        type: string
+        required: false
+        description: Longitude used in coordinates filter
+    responses:
+      200:
+        description: List of observations (possibly filtered)
+        schema:
+          type: array
+          items:
+            type: object
+      400:
+        description: Invalid query parameter values
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+            code:
+              type: integer
+    """
     # Start with all records
     query = Observation.query
 
@@ -288,9 +460,73 @@ def get_observations():
     results = query.all()
     return jsonify(observations_schema.dump(results)), 200
 
+
 # US-12: Bulk create observations
+
 @app.post("/observations/bulk")
 def bulk_create_observations():
+    """
+    Bulk create observations
+    ---
+    tags:
+      - Observations
+    consumes:
+      - application/json
+    parameters:
+      - name: body
+        in: body
+        required: true
+        description: List of observation objects to create
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                description: ISO 8601 timestamp
+              timezone:
+                type: string
+              coordinates:
+                type: string
+                description: "e.g., lat=53.5,long=-2.4"
+              satellite_id:
+                type: string
+              spectral_indices:
+                type: object
+              notes:
+                type: string
+    responses:
+      201:
+        description: All observations created successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            created_count:
+              type: integer
+            records:
+              type: array
+              items:
+                type: object
+      400:
+        description: Bulk insert failed due to validation errors
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  record:
+                    type: integer
+                  error:
+                    type: string
+    """
     data = request.get_json()
 
     if not isinstance(data, list):
@@ -355,6 +591,7 @@ def bulk_create_observations():
         "records": observations_schema.dump(created)
     }), 201
 
+
 # ============================================
 # TEST ENDPOINTS (For verifying error handlers)
 # ============================================
@@ -364,34 +601,41 @@ def test_bad_request():
     from werkzeug.exceptions import BadRequest
     raise BadRequest("Invalid JSON format or missing required fields")
 
+
 @app.get("/test-unauthorized")
 def test_unauthorized():
     from werkzeug.exceptions import Unauthorized
     raise Unauthorized("Invalid or missing authentication token")
+
 
 @app.get("/test-forbidden")
 def test_forbidden():
     from werkzeug.exceptions import Forbidden
     raise Forbidden("You do not have permission to access this resource")
 
+
 @app.post("/test-validate")
 def test_validate():
     from werkzeug.exceptions import UnprocessableEntity
     raise UnprocessableEntity("Data validation failed")
+
 
 @app.get("/test-rate-limit")
 def test_rate_limit():
     from werkzeug.exceptions import TooManyRequests
     raise TooManyRequests("You have made too many requests. Please wait before trying again")
 
+
 @app.get("/test-server-error")
 def test_server_error():
     raise Exception("Simulated server crash")
+
 
 @app.get("/test-unavailable")
 def test_unavailable():
     from werkzeug.exceptions import ServiceUnavailable
     raise ServiceUnavailable("Service is temporarily unavailable")
+
 
 if __name__ == "__main__":
     app.run(debug=True)
