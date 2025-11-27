@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-11-27T12:00:00",
+  "timezone": "UTC",
+  "coordinates": "53.5,-2.4",
+  "satellite_id": "SAT-1",
+  "spectral_indices": "NDVI=0.6",
+  "notes": "test observation from Masar"
+}
