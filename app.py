@@ -129,6 +129,23 @@ def create_tables_once():
 # ============================================
 # JWT config and User model are above; login endpoint and protected routes below
 
+# US-11: Helper function for quarter boundary checks
+def get_current_quarter_start():
+    """
+    US-11: Returns the start date of the current quarter (e.g., Oct 1 for Q4).
+    """
+    now = datetime.now()
+    # Adjust to first day of current quarter
+    if now.month <= 3:
+        quarter_start = datetime(now.year, 1, 1)
+    elif now.month <= 6:
+        quarter_start = datetime(now.year, 4, 1)
+    elif now.month <= 9:
+        quarter_start = datetime(now.year, 7, 1)
+    else:  # 10-12
+        quarter_start = datetime(now.year, 10, 1)
+    return quarter_start
+
 # ============================================
 # ERROR HANDLERS (9 total)
 # ============================================
@@ -309,6 +326,29 @@ def create_observation():
                 "code": 400
             }), 400
         
+        #  -----------------------------
+        # US-10: Determine quarter start (not stored, just for demo)
+        # Step 1: Determine the start of the current quarter
+        # -----------------------------
+        month = datetime.utcnow().month
+        year = datetime.utcnow().year
+        if month in [1, 2, 3]:
+            quarter_start = datetime(year, 1, 1)
+        elif month in [4, 5, 6]:
+            quarter_start = datetime(year, 4, 1)
+        elif month in [7, 8, 9]:
+            quarter_start = datetime(year, 7, 1)
+        else:  # 10,11,12
+            quarter_start = datetime(year, 10, 1)
+
+       # Step 2: Reject observations before current quarter
+        if timestamp_dt < quarter_start:
+            return jsonify({
+                "error": "Cannot create observation before current quarter",
+                "code": 400
+            }), 400
+
+
         # Create new Observation instance
         new_observation = Observation(
             timestamp=timestamp_dt,
@@ -332,6 +372,122 @@ def create_observation():
             "error": "Failed to store observation",
             "code": 500
         }), 500  # Uses existing handler
+
+# US-11: PUT /observations/<id> - Full update (protected from historical edits)
+@app.put("/observations/<int:obs_id>")
+@jwt_required()  # US-13: Protect with JWT
+def update_observation_full(obs_id):
+    # Fetch existing observation
+    obs = Observation.query.get_or_404(obs_id)
+    
+    # US-11: Check if historical (before current quarter)
+    current_quarter_start = get_current_quarter_start()
+    if obs.timestamp < current_quarter_start:
+        return jsonify({
+            "error": "Historical data cannot be modified",
+            "message": f"Records before {current_quarter_start.date()} are immutable",
+            "code": 403
+        }), 403  # Uses existing 403 handler
+    
+    # US-10: Parse JSON payload for update
+    data = request.get_json()
+    if not data:
+        return jsonify({
+            "error": "No JSON payload provided",
+            "code": 400
+        }), 400
+    
+    try:
+        # Update fields (allow partial, but since PUT, assume full; validate timestamp if provided)
+        timestamp_str = data.get('timestamp')
+        if timestamp_str:
+            try:
+                new_timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                obs.timestamp = new_timestamp
+            except ValueError:
+                return jsonify({
+                    "error": "Invalid timestamp format. Use ISO 8601 (e.g., 2025-11-27T12:00:00)",
+                    "code": 400
+                }), 400
+        
+        obs.timezone = data.get('timezone', obs.timezone)
+        obs.coordinates = data.get('coordinates', obs.coordinates)
+        obs.satellite_id = data.get('satellite_id', obs.satellite_id)
+        obs.spectral_indices = data.get('spectral_indices', obs.spectral_indices)
+        obs.notes = data.get('notes', obs.notes)
+        
+        # Persist update
+        db.session.commit()
+        
+        # Return updated data as JSON with ISO timestamp
+        return jsonify(observation_schema.dump(obs)), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "Failed to update observation",
+            "code": 500
+        }), 500
+
+# US-11: PATCH /observations/<id> - Partial update (protected from historical edits)
+@app.patch("/observations/<int:obs_id>")
+@jwt_required()  # US-13: Protect with JWT
+def update_observation_partial(obs_id):
+    # Fetch existing observation
+    obs = Observation.query.get_or_404(obs_id)
+    
+    # US-11: Check if historical (before current quarter)
+    current_quarter_start = get_current_quarter_start()
+    if obs.timestamp < current_quarter_start:
+        return jsonify({
+            "error": "Historical data cannot be modified",
+            "message": f"Records before {current_quarter_start.date()} are immutable",
+            "code": 403
+        }), 403  # Uses existing 403 handler
+    
+    # US-10: Parse JSON payload for partial update
+    data = request.get_json()
+    if not data:
+        return jsonify({
+            "error": "No JSON payload provided",
+            "code": 400
+        }), 400
+    
+    try:
+        # Update only provided fields
+        if 'timestamp' in data:
+            try:
+                new_timestamp = datetime.fromisoformat(data['timestamp'].replace('Z', '+00:00'))
+                obs.timestamp = new_timestamp
+            except ValueError:
+                return jsonify({
+                    "error": "Invalid timestamp format. Use ISO 8601 (e.g., 2025-11-27T12:00:00)",
+                    "code": 400
+                }), 400
+        
+        if 'timezone' in data:
+            obs.timezone = data['timezone']
+        if 'coordinates' in data:
+            obs.coordinates = data['coordinates']
+        if 'satellite_id' in data:
+            obs.satellite_id = data['satellite_id']
+        if 'spectral_indices' in data:
+            obs.spectral_indices = data['spectral_indices']
+        if 'notes' in data:
+            obs.notes = data['notes']
+        
+        # Persist update
+        db.session.commit()
+        
+        # Return updated data as JSON with ISO timestamp
+        return jsonify(observation_schema.dump(obs)), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "Failed to update observation",
+            "code": 500
+        }), 500
 
 # US-09: GET /observations with filtering support
 @app.get("/observations")
@@ -380,6 +536,7 @@ def get_observations():
             "code": 400
         }), 400
 
+    
     # Execute query and serialize to JSON
     results = query.all()
     return jsonify(observations_schema.dump(results)), 200
