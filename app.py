@@ -655,5 +655,44 @@ def test_unavailable():
 # -----------------------------
 # RUN SERVER
 # -----------------------------
+
+# ============================================
+# US-22: Simple ORM demo for Dataset
+# ============================================
+
+@app.post("/datasets/demo")
+def create_demo_dataset():
+    """
+    Create a demo dataset (US-22 ORM check)
+    ---
+    tags:
+      - Datasets
+    responses:
+      201:
+        description: Demo dataset created using SQLAlchemy ORM
+    """
+    demo = Dataset(
+        name="Demo dataset",
+        description="Created via SQLAlchemy ORM"
+    )
+    db.session.add(demo)
+    db.session.commit()
+    return jsonify(dataset_schema.dump(demo)), 201
+
+
+@app.get("/datasets")
+def list_datasets():
+    """
+    List all datasets (US-22 ORM check)
+    ---
+    tags:
+      - Datasets
+    responses:
+      200:
+        description: List of Dataset objects mapped from the database
+    """
+    all_datasets = Dataset.query.all()
+    return jsonify(datasets_schema.dump(all_datasets)), 200
+
 if __name__ == "__main__":
     app.run(debug=True)
