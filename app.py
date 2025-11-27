@@ -199,8 +199,8 @@ def login():
 
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
-        # Create access token (expires in 30 min; configurable)
-        access_token = create_access_token(identity=user.id, expires_delta=None)  # Default 15 min; set to None for longer
+        # Create access token - MUST convert user.id to string
+        access_token = create_access_token(identity=str(user.id))  # Changed: str(user.id)
         return jsonify({
             "access_token": access_token,
             "token_type": "Bearer",
@@ -215,12 +215,12 @@ def login():
 
 # US-13: GET /protected (simple protected endpoint for testing)
 @app.get("/protected")
-@jwt_required()  # Requires valid JWT in Authorization: Bearer <token>
+@jwt_required()
 def protected():
-    current_user_id = get_jwt_identity()
+    current_user_id = get_jwt_identity()  # This is now a string
     return jsonify({
         "message": "Access granted",
-        "user_id": current_user_id
+        "user_id": int(current_user_id)  # Convert back to int for display
     }), 200
 
 # US-07: Standard HTTP Methods on /items
@@ -248,15 +248,73 @@ def patch_item(item_id):
 def delete_item(item_id):
     return jsonify({"message": "DELETE OK", "id": item_id, "details": "Item deleted (dummy)"}), 200
 
+# ============================================
+# US-10: OBSERVATIONS CRUD (Create + Read with Filtering)
+# ============================================
+
+# US-10: POST /observations - Store geospatial observation data
+@app.post("/observations")
+@jwt_required()  # US-13: Protect with JWT (same as GET)
+def create_observation():
+    # US-10: Parse JSON payload
+    data = request.get_json()
+    if not data:
+        return jsonify({
+            "error": "No JSON payload provided",
+            "code": 400
+        }), 400
+
+    try:
+        # US-10: Extract and validate timestamp (required field)
+        timestamp_str = data.get('timestamp')
+        if not timestamp_str:
+            return jsonify({
+                "error": "Validation failed",
+                "message": "Missing or invalid required fields",
+                "details": {"timestamp": ["Missing data for required field."]},
+                "code": 400
+            }), 400
+        
+        # Parse timestamp to datetime object
+        try:
+            timestamp_dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+        except ValueError:
+            return jsonify({
+                "error": "Invalid timestamp format. Use ISO 8601 (e.g., 2025-11-27T12:00:00)",
+                "code": 400
+            }), 400
+        
+        # Create new Observation instance
+        new_observation = Observation(
+            timestamp=timestamp_dt,
+            timezone=data.get('timezone'),
+            coordinates=data.get('coordinates'),  # e.g., "lat=40.7,long=-74.0"
+            satellite_id=data.get('satellite_id'),
+            spectral_indices=data.get('spectral_indices'),  # e.g., JSON string like '{"ndvi": 0.5}'
+            notes=data.get('notes')
+        )
+        
+        # Persist to DB
+        db.session.add(new_observation)
+        db.session.commit()
+        
+        # US-10: Return persisted data as JSON with ISO timestamp (schema handles serialization)
+        return jsonify(observation_schema.dump(new_observation)), 201  # 201 Created
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "Failed to store observation",
+            "code": 500
+        }), 500  # Uses existing handler
+
 # US-09: GET /observations with filtering support
-
 @app.get("/observations")
-@jwt_required()  # US-13: Protect with JWT; no token → 401
+@jwt_required()
 def get_observations():
-    # Optional: Get user ID from token for logging/auditing
-    current_user_id = get_jwt_identity()
-    # (You could add user-specific filtering here later, e.g., query.filter_by(user_id=current_user_id))
-
+    current_user_id = get_jwt_identity()  # This is now a string
+    # Convert to int if you need to query by user_id: int(current_user_id)
+    
     # Start with all records
     query = Observation.query
 
