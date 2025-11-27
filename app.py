@@ -5,8 +5,14 @@ from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from datetime import datetime  # For date parsing in filtering
+from werkzeug.security import generate_password_hash, check_password_hash  # For password hashing
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, verify_jwt_in_request
 
 app = Flask(__name__)
+
+# US-13: JWT Configuration (use a strong secret in production; generate via os.urandom(24))
+app.config['JWT_SECRET_KEY'] = 'terra-scope-super-secret-key-2025'  # Dev key; change for prod
+jwt = JWTManager(app)
 
 # -----------------------------
 # CONFIG
@@ -65,47 +71,54 @@ class ObservationSchema(ma.SQLAlchemyAutoSchema):
 observation_schema = ObservationSchema()
 observations_schema = ObservationSchema(many=True)
 
-# US-19: Create database tables once
+# US-13: User Model (for authentication; stores hashed passwords)
+class User(db.Model):
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(120), nullable=False)  # Hashed password
+
+    def __repr__(self):
+        return f"<User {self.username}>"
+
+    # Helper to set hashed password
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    # Helper to check password
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+# US-13: Marshmallow schema for User (for potential serialization; not strictly needed but aligns with style)
+class UserSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = User
+        load_instance = True
+        exclude = ('password_hash',)  # Never expose hash
+
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)
+
+# US-19: Create database tables once (now includes users)
 tables_created = False
 @app.before_request
 def create_tables_once():
     global tables_created
     if not tables_created:
-        db.create_all()  # Creates both datasets and observations tables
+        db.create_all()  # Creates datasets, observations, and users tables
+        # US-13: Seed a test user if none exist (username: 'testuser', password: 'testpass' – remove for prod)
+        if User.query.count() == 0:
+            test_user = User(username='testuser')
+            test_user.set_password('testpass')
+            db.session.add(test_user)
+            db.session.commit()
         tables_created = True
 
 # ============================================
-# JWT IMPLEMENTATION
+# JWT IMPLEMENTATION (now using flask-jwt-extended)
 # ============================================
-DEMO_USER = {"username": "admin", "password": "password123"}
-
-def create_token(username):
-    payload = {
-        "username": username,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1)
-    }
-    return jwt.encode(payload, app.config["SECRET_KEY"], algorithm="HS256")
-
-def jwt_required(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            return jsonify({
-                "error": "Missing Authorization Header",
-                "message": "Provide token in format: Bearer <token>"
-            }), 401
-        try:
-            token = auth_header.split(" ")[1]
-            decoded = jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
-            request.user = decoded["username"]
-        except Exception:
-            return jsonify({
-                "error": "Invalid or expired token",
-                "message": "Login again to get a new token"
-            }), 401
-        return fn(*args, **kwargs)
-    return wrapper
+# JWT config and User model are above; login endpoint and protected routes below
 
 # ============================================
 # ERROR HANDLERS (9 total)
@@ -174,13 +187,41 @@ def root():
 
 @app.post("/auth/login")
 def login():
-    data = request.get_json() or {}
-    username = data.get("username")
-    password = data.get("password")
-    if username != DEMO_USER["username"] or password != DEMO_USER["password"]:
-        return jsonify({"error": "Invalid credentials"}), 401
-    token = create_token(username)
-    return jsonify({"access_token": token, "token_type": "Bearer", "expires_in": "1 hour"})
+    data = request.get_json()
+    if not data or 'username' not in data or 'password' not in data:
+        return jsonify({
+            "error": "Missing username or password",
+            "code": 400
+        }), 400
+
+    username = data['username']
+    password = data['password']
+
+    user = User.query.filter_by(username=username).first()
+    if user and user.check_password(password):
+        # Create access token (expires in 30 min; configurable)
+        access_token = create_access_token(identity=user.id, expires_delta=None)  # Default 15 min; set to None for longer
+        return jsonify({
+            "access_token": access_token,
+            "token_type": "Bearer",
+            "user_id": user.id,
+            "message": "Login successful"
+        }), 200
+    else:
+        return jsonify({
+            "error": "Invalid username or password",
+            "code": 401
+        }), 401
+
+# US-13: GET /protected (simple protected endpoint for testing)
+@app.get("/protected")
+@jwt_required()  # Requires valid JWT in Authorization: Bearer <token>
+def protected():
+    current_user_id = get_jwt_identity()
+    return jsonify({
+        "message": "Access granted",
+        "user_id": current_user_id
+    }), 200
 
 # US-07: Standard HTTP Methods on /items
 
@@ -210,7 +251,12 @@ def delete_item(item_id):
 # US-09: GET /observations with filtering support
 
 @app.get("/observations")
+@jwt_required()  # US-13: Protect with JWT; no token → 401
 def get_observations():
+    # Optional: Get user ID from token for logging/auditing
+    current_user_id = get_jwt_identity()
+    # (You could add user-specific filtering here later, e.g., query.filter_by(user_id=current_user_id))
+
     # Start with all records
     query = Observation.query
 
@@ -292,17 +338,12 @@ def test_unavailable():
     from werkzeug.exceptions import ServiceUnavailable
     raise ServiceUnavailable("Service is temporarily unavailable")
 
-# -----------------------------
-# EXAMPLE PROTECTED ROUTE
-# -----------------------------
-@app.get("/secure-data")
-@jwt_required
-def secure_data():
-    return jsonify({
-        "message": "You are authenticated",
-        "user": request.user,
-        "data": ["secret-1", "secret-2"]
-    })
+# ============================================
+# NOTES
+# ============================================
+# Use @jwt_required() decorator on any endpoint that needs JWT protection
+# Test with: curl -H "Authorization: Bearer <token>" http://localhost:5000/observations
+# Get token from /auth/login endpoint (POST with username and password)
 
 # -----------------------------
 # RUN SERVER
