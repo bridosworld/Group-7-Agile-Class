@@ -2,9 +2,18 @@ from flask import Flask, jsonify, request
 import json
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from flasgger import Swagger
 from datetime import datetime  # For date parsing in filtering
 
 app = Flask(__name__)
+# Swagger config
+app.config['SWAGGER'] = {
+    'title': 'TerraScope API',
+    'uiversion': 3
+}
+
+swagger = Swagger(app)
+
 
 app.config['JSON_AS_ASCII'] = False
 
@@ -166,7 +175,23 @@ def handle_exception(e):
 
 @app.get("/health")
 def health():
+    """
+    Health check
+    ---
+    tags:
+      - System
+    responses:
+      200:
+        description: API is running
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: ok
+    """
     return jsonify({"status": "ok"}), 200
+
 
 @app.get("/")
 def root():
@@ -262,6 +287,73 @@ def get_observations():
     # Execute query and serialize to JSON
     results = query.all()
     return jsonify(observations_schema.dump(results)), 200
+
+# US-12: Bulk create observations
+@app.post("/observations/bulk")
+def bulk_create_observations():
+    data = request.get_json()
+
+    if not isinstance(data, list):
+        return jsonify({
+            "error": "Bad Request",
+            "message": "Expected a list of observation objects",
+            "code": 400
+        }), 400
+
+    created = []
+    errors = []
+
+    for index, item in enumerate(data):
+        # Validate required fields
+        required = ["timestamp", "timezone", "coordinates", "satellite_id"]
+        missing = [f for f in required if f not in item]
+
+        if missing:
+            errors.append({
+                "record": index,
+                "error": f"Missing required fields: {', '.join(missing)}"
+            })
+            continue
+
+        # Parse timestamp safely
+        try:
+            timestamp = datetime.fromisoformat(item["timestamp"].replace("Z", "+00:00"))
+        except ValueError:
+            errors.append({
+                "record": index,
+                "error": "Invalid timestamp format. Use ISO 8601"
+            })
+            continue
+
+        # Create record
+        obs = Observation(
+            timestamp=timestamp,
+            timezone=item.get("timezone"),
+            coordinates=item.get("coordinates"),
+            satellite_id=item.get("satellite_id"),
+            spectral_indices=json.dumps(item.get("spectral_indices")),
+            notes=item.get("notes")
+        )
+
+        db.session.add(obs)
+        created.append(obs)
+
+    # If ANY errors → rollback everything
+    if errors:
+        db.session.rollback()
+        return jsonify({
+            "message": "Bulk insert failed",
+            "errors": errors
+        }), 400
+
+    # Otherwise commit all
+    db.session.commit()
+
+    return jsonify({
+        "message": "Bulk insert successful",
+        "created_count": len(created),
+        "records": observations_schema.dump(created)
+    }), 201
 
 # ============================================
 # TEST ENDPOINTS (For verifying error handlers)
