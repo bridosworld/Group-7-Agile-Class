@@ -1,4 +1,6 @@
+
 from flask import Flask, jsonify, request
+
 import datetime
 import jwt
 import json
@@ -6,127 +8,166 @@ from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flasgger import Swagger
-from datetime import datetime  # For date parsing in filtering
-from werkzeug.security import generate_password_hash, check_password_hash  # For password hashing
+from datetime import datetime  
+from werkzeug.security import generate_password_hash, check_password_hash  
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, verify_jwt_in_request
 
+# Create the Flask application object
 app = Flask(__name__)
-# Swagger config
+
+# Swagger / OpenAPI UI basic configuration
 app.config['SWAGGER'] = {
-    'title': 'TerraScope API',
-    'uiversion': 3
+    'title': 'TerraScope API',  # Title shown on Swagger UI page
+    'uiversion': 3              # Use Swagger UI v3
 }
 
+# Attach Swagger to this Flask app so /apidocs (or configured route) will show docs
 swagger = Swagger(app)
 
 
-# US-13: JWT Configuration (use a strong secret in production; generate via os.urandom(24))
+# US-13: JWT Configuration
+# This secret key is used to sign JWT tokens (must be strong & private in real production)
 app.config['JWT_SECRET_KEY'] = 'terra-scope-super-secret-key-2025'  # Dev key; change for prod
+# Create the JWT manager object and attach it to the Flask app
 jwt = JWTManager(app)
 
 # -----------------------------
 # CONFIG
 # -----------------------------
+# Ensure JSON is returned as UTF-8 (allows non-ASCII characters correctly)
 app.config['JSON_AS_ASCII'] = False
+# Use SQLite database file called terrascope_dev.db in the local folder
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///terrascope_dev.db"
+# Echo all SQL commands in the terminal (useful for debugging ORM behaviour)
 app.config["SQLALCHEMY_ECHO"] = True
+# Disable a deprecated SQLAlchemy tracking feature to avoid warnings
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+# General Flask secret key (used e.g. for sessions); here also labelled as JWT secret
 app.config["SECRET_KEY"] = "CHANGE_ME_SECRET_KEY"  # JWT secret
 
+# Create SQLAlchemy instance bound to the app (for defining models and queries)
 db = SQLAlchemy(app)
+# Create Marshmallow instance bound to the app (for schemas)
 ma = Marshmallow(app)
 
 # -----------------------------
 # DATABASE MODELS + SCHEMAS
 # US-19: Dataset Model + US-10: Observation Model
 # -----------------------------
-class Dataset(db.Model):
-    __tablename__ = "datasets"
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
-    description = db.Column(db.String(255), nullable=True)
+# Dataset model represents a simple dataset in the database
+class Dataset(db.Model):
+    __tablename__ = "datasets"  # Table name in SQLite DB
+
+    id = db.Column(db.Integer, primary_key=True)             # Unique ID per dataset
+    name = db.Column(db.String(120), nullable=False)         # Name (required)
+    description = db.Column(db.String(255), nullable=True)   # Optional description text
 
     def __repr__(self):
+        # Helpful string representation when printing Dataset objects
         return f"<Dataset {self.id} - {self.name}>"
 
 
+# Schema for turning Dataset objects into JSON and back
 class DatasetSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
-        model = Dataset
-        load_instance = True
+        model = Dataset         # Connect schema to Dataset model
+        load_instance = True    # When loading, create real Dataset instances
 
 
+# Single-dataset schema (one object)
 dataset_schema = DatasetSchema()
+# Multi-dataset schema (list of objects)
 datasets_schema = DatasetSchema(many=True)
 
-# US-10: Observation Model (for satellite data with filtering support)
-class Observation(db.Model):
-    __tablename__ = "observations"
 
-    id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime, nullable=False)  # ISO 8601 via datetime
-    timezone = db.Column(db.String(50), nullable=True)
-    coordinates = db.Column(db.String(100), nullable=True)  # e.g., "lat=40.7,long=-74.0"
-    satellite_id = db.Column(db.String(50), nullable=True)
-    spectral_indices = db.Column(db.Text, nullable=True)  # Can store as JSON string
-    notes = db.Column(db.Text, nullable=True)
+# US-10: Observation Model (for satellite data with filtering support)
+# This model stores details of each satellite observation
+class Observation(db.Model):
+    __tablename__ = "observations"  # Table name in SQLite DB
+
+    id = db.Column(db.Integer, primary_key=True)                   # Unique ID per observation
+    timestamp = db.Column(db.DateTime, nullable=False)             # Exact date/time of observation
+    timezone = db.Column(db.String(50), nullable=True)             # Time zone string
+    coordinates = db.Column(db.String(100), nullable=True)         # e.g., "lat=40.7,long=-74.0"
+    satellite_id = db.Column(db.String(50), nullable=True)         # Which satellite captured this
+    spectral_indices = db.Column(db.Text, nullable=True)           # JSON string of spectral data
+    notes = db.Column(db.Text, nullable=True)                      # Free-form notes/comments
 
     def __repr__(self):
+        # Helpful representation for debugging / logs
         return f"<Observation {self.id} - {self.timestamp}>"
 
 
+# Schema for Observation model
 class ObservationSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
-        model = Observation
-        load_instance = True
+        model = Observation      # Link to Observation model
+        load_instance = True     # Load back as Observation objects
 
 
+# Single observation schema
 observation_schema = ObservationSchema()
+# Multiple observations schema
 observations_schema = ObservationSchema(many=True)
 
-# US-13: User Model (for authentication; stores hashed passwords)
-class User(db.Model):
-    __tablename__ = "users"
 
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(120), nullable=False)  # Hashed password
+# US-13: User Model (for authentication; stores hashed passwords)
+# This model represents a user who can log into the API and get a JWT token
+class User(db.Model):
+    __tablename__ = "users"  # Table name in DB
+
+    id = db.Column(db.Integer, primary_key=True)                # Unique user ID
+    username = db.Column(db.String(80), unique=True, nullable=False)   # Username must be unique
+    password_hash = db.Column(db.String(120), nullable=False)   # Securely stored password hash
 
     def __repr__(self):
+        # Show username when printing the object
         return f"<User {self.username}>"
 
-    # Helper to set hashed password
+    # Helper method to hash and store a password
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
-    # Helper to check password
+    # Helper method to verify a given password against the stored hash
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-# US-13: Marshmallow schema for User (for potential serialization; not strictly needed but aligns with style)
+
+# US-13: Marshmallow schema for User (for potential serialization)
 class UserSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = User
         load_instance = True
-        exclude = ('password_hash',)  # Never expose hash
+        exclude = ('password_hash',)  # Make sure password hash is never sent in API responses
 
+
+# Single-user schema
 user_schema = UserSchema()
+# Multi-user schema
 users_schema = UserSchema(many=True)
 
+
 # US-19: Create database tables once (now includes users)
-tables_created = False
+tables_created = False  # Flag so we only create tables once per app lifetime
+
 @app.before_request
 def create_tables_once():
+    """
+    This function runs before every request.
+    It makes sure the database tables exist and seeds a default test user once.
+    """
     global tables_created
     if not tables_created:
-        db.create_all()  # Creates datasets, observations, and users tables
-        # US-13: Seed a test user if none exist (username: 'testuser', password: 'testpass' – remove for prod)
+        # Create all tables for Dataset, Observation, User, etc.
+        db.create_all()
+        # If there are no users yet, create a simple test user for JWT login demos
         if User.query.count() == 0:
-            test_user = User(username='testuser')
-            test_user.set_password('testpass')
+            test_user = User(username='testuser')  # Default username
+            test_user.set_password('testpass')     # Default password (hashed inside)
             db.session.add(test_user)
             db.session.commit()
+        # Mark that tables and seed user have been created
         tables_created = True
 
 
@@ -135,80 +176,98 @@ def create_tables_once():
 # ============================================
 # JWT config and User model are above; login endpoint and protected routes below
 
+
 # US-11: Helper function for quarter boundary checks
 def get_current_quarter_start():
     """
-    US-11: Returns the start date of the current quarter (e.g., Oct 1 for Q4).
+    US-11: Returns the start date of the current calendar quarter.
+    Example: if month is 10, this returns 1st October of the current year.
     """
-    now = datetime.now()
-    # Adjust to first day of current quarter
+    now = datetime.now()  # Get current date and time
+    # Work out which quarter we are in, then build a date at the start of that quarter
     if now.month <= 3:
-        quarter_start = datetime(now.year, 1, 1)
+        quarter_start = datetime(now.year, 1, 1)   # Q1: Jan 1
     elif now.month <= 6:
-        quarter_start = datetime(now.year, 4, 1)
+        quarter_start = datetime(now.year, 4, 1)   # Q2: Apr 1
     elif now.month <= 9:
-        quarter_start = datetime(now.year, 7, 1)
+        quarter_start = datetime(now.year, 7, 1)   # Q3: Jul 1
     else:  # 10-12
-        quarter_start = datetime(now.year, 10, 1)
+        quarter_start = datetime(now.year, 10, 1)  # Q4: Oct 1
     return quarter_start
+
 
 # ============================================
 # ERROR HANDLERS (9 total)
 # ============================================
+# Each of these functions standardises error responses in JSON format.
+
 @app.errorhandler(400)
 def bad_request(error):
+    # Handle invalid requests (wrong data, bad JSON, etc.)
     return jsonify({"error": "Bad Request", "message": error.description or "Your input is invalid", "code": 400}), 400
 
 
 @app.errorhandler(401)
 def unauthorized(error):
+    # Handle missing/invalid authentication
     return jsonify({"error": "Unauthorized", "message": error.description or "Authentication required", "code": 401}), 401
 
 
 @app.errorhandler(403)
 def forbidden(error):
+    # Handle user being authenticated but not allowed to access resource
     return jsonify({"error": "Forbidden", "message": error.description or "Access denied", "code": 403}), 403
 
 
 @app.errorhandler(404)
 def not_found(error):
+    # Handle wrong URL / endpoint
     return jsonify({"error": "Not Found", "message": error.description or "Endpoint not found", "code": 404}), 404
 
 
 @app.errorhandler(405)
 def method_not_allowed(error):
+    # Handle wrong HTTP method used on valid endpoint
     return jsonify({"error": "Method Not Allowed", "message": "Use valid HTTP method", "code": 405}), 405
 
 
 @app.errorhandler(422)
 def unprocessable_entity(error):
+    # Handle data that is syntactically correct but fails validation rules
     return jsonify({"error": "Unprocessable Entity", "message": error.description or "Validation failed", "code": 422}), 422
 
 
 @app.errorhandler(429)
 def too_many_requests(error):
+    # Handle rate limiting (too many requests in short time)
     return jsonify({"error": "Too Many Requests", "message": error.description or "Rate limit exceeded", "code": 429}), 429
 
 
 @app.errorhandler(500)
 def internal_error(error):
+    # Handle unexpected server errors
     return jsonify({"error": "Internal Server Error", "message": "Something went wrong", "code": 500}), 500
 
 
 @app.errorhandler(503)
 def service_unavailable(error):
+    # Handle service unavailable (e.g., maintenance or temporary failure)
     return jsonify({"error": "Service Unavailable", "message": error.description or "Server temporarily down", "code": 503}), 503
 
 
 # Force 500 handler to work even in debug mode
 @app.errorhandler(Exception)
 def handle_exception(e):
-    # Pass through HTTP exceptions (like 404, 401, etc.)
+    """
+    Catch-all handler for any uncaught exception that is NOT a standard HTTPException.
+    This ensures the client always gets a clean JSON error instead of a stack trace.
+    """
     from werkzeug.exceptions import HTTPException
+    # If it's an HTTPException (like 404/401), let its own handler deal with it
     if isinstance(e, HTTPException):
         return e
 
-    # Now handle non-HTTP exceptions (like our simulated crash)
+    # For everything else, return a generic 500 error in JSON
     return jsonify({
         "error": "Internal Server Error",
         "message": "Something went wrong, try again later",
@@ -219,10 +278,12 @@ def handle_exception(e):
 # ============================================
 # MAIN ENDPOINTS
 # ============================================
+
 @app.get("/health")
 def health():
     """
-    Health check
+    Simple endpoint to confirm the API is running.
+    Used as a health check (US-05) and documented for Swagger (US-06).
     ---
     tags:
       - System
@@ -241,56 +302,69 @@ def health():
 
 @app.get("/")
 def root():
+    # Root endpoint, returns a basic message confirming the TerraScope API startup
     return jsonify({"message": "TerraScope API is running", "status": "ok"}), 200
+
 
 @app.post("/auth/login")
 def login():
-    data = request.get_json()
+    """
+    Login endpoint:
+    - Takes username and password in JSON.
+    - If correct, returns a JWT access token for protected routes.
+    """
+    data = request.get_json()  # Read JSON body from the request
+    # Validate that username and password were provided
     if not data or 'username' not in data or 'password' not in data:
         return jsonify({
             "error": "Missing username or password",
             "code": 400
         }), 400
 
-    username = data['username']
-    password = data['password']
+    username = data['username']   # Extract username from JSON
+    password = data['password']   # Extract password from JSON
 
+    # Find user record in database by username
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
-        # Create access token - MUST convert user.id to string
+        # Create JWT access token; identity must be serializable so we convert id to string
         access_token = create_access_token(identity=str(user.id))  # Changed: str(user.id)
         return jsonify({
-            "access_token": access_token,
-            "token_type": "Bearer",
-            "user_id": user.id,
+            "access_token": access_token,   # Token used in Authorization header
+            "token_type": "Bearer",         # Token type (standard prefix)
+            "user_id": user.id,             # User ID for client reference
             "message": "Login successful"
         }), 200
     else:
+        # Return error if username/password are incorrect
         return jsonify({
             "error": "Invalid username or password",
             "code": 401
         }), 401
 
+
 # US-13: GET /protected (simple protected endpoint for testing)
 @app.get("/protected")
-@jwt_required()
+@jwt_required()  # This decorator forces a valid JWT token on the request
 def protected():
-    current_user_id = get_jwt_identity()  # This is now a string
+    # Get the user id stored in the JWT token (as string)
+    current_user_id = get_jwt_identity()
     return jsonify({
         "message": "Access granted",
-        "user_id": int(current_user_id)  # Convert back to int for display
+        "user_id": int(current_user_id)  # Convert ID back to int before returning
     }), 200
 
 
 # US-07: Standard HTTP Methods on /items
-
 # -----------------------------
 # DUMMY ITEM ROUTES
 # -----------------------------
+
 @app.get("/items")
 def get_items():
     """
-    Get all items (demo)
+    Demo endpoint that returns an empty list of items.
+    Used to show a working GET endpoint and documented in Swagger.
     ---
     tags:
       - Items
@@ -316,7 +390,8 @@ def get_items():
 @app.post("/items")
 def create_item():
     """
-    Create an item (demo)
+    Demo POST endpoint that pretends to create an item.
+    It returns a success message but does not actually store anything.
     ---
     tags:
       - Items
@@ -340,7 +415,8 @@ def create_item():
 @app.put("/items/<int:item_id>")
 def update_item(item_id):
     """
-    Full update of an item (demo)
+    Demo PUT endpoint that pretends to fully update an item.
+    Uses a path parameter item_id for the item to update.
     ---
     tags:
       - Items
@@ -373,7 +449,7 @@ def update_item(item_id):
 @app.patch("/items/<int:item_id>")
 def patch_item(item_id):
     """
-    Partial update of an item (demo)
+    Demo PATCH endpoint that pretends to partially update an item.
     ---
     tags:
       - Items
@@ -406,7 +482,7 @@ def patch_item(item_id):
 @app.delete("/items/<int:item_id>")
 def delete_item(item_id):
     """
-    Delete an item (demo)
+    Demo DELETE endpoint that pretends to delete an item.
     ---
     tags:
       - Items
@@ -435,23 +511,25 @@ def delete_item(item_id):
         "details": "Item deleted (dummy)"
     }), 200
 
+
 # US-11: PUT /observations/<id> - Full update (protected from historical edits)
 @app.put("/observations/<int:obs_id>")
-@jwt_required()  # US-13: Protect with JWT
+@jwt_required()  # US-13: Protect this route so only logged-in users can update
 def update_observation_full(obs_id):
-    # Fetch existing observation
+    # Fetch existing observation or return 404 if not found
     obs = Observation.query.get_or_404(obs_id)
     
-    # US-11: Check if historical (before current quarter)
+    # US-11: Check if observation is older than the start of current quarter
     current_quarter_start = get_current_quarter_start()
     if obs.timestamp < current_quarter_start:
+        # If record is historical, block the update
         return jsonify({
             "error": "Historical data cannot be modified",
             "message": f"Records before {current_quarter_start.date()} are immutable",
             "code": 403
         }), 403  # Uses existing 403 handler
     
-    # US-10: Parse JSON payload for update
+    # Read JSON body for the update
     data = request.get_json()
     if not data:
         return jsonify({
@@ -460,7 +538,7 @@ def update_observation_full(obs_id):
         }), 400
     
     try:
-        # Update fields (allow partial, but since PUT, assume full; validate timestamp if provided)
+        # Handle timestamp if provided in the update
         timestamp_str = data.get('timestamp')
         if timestamp_str:
             try:
@@ -472,33 +550,36 @@ def update_observation_full(obs_id):
                     "code": 400
                 }), 400
         
+        # Update other fields, defaulting to old value if not provided
         obs.timezone = data.get('timezone', obs.timezone)
         obs.coordinates = data.get('coordinates', obs.coordinates)
         obs.satellite_id = data.get('satellite_id', obs.satellite_id)
         obs.spectral_indices = data.get('spectral_indices', obs.spectral_indices)
         obs.notes = data.get('notes', obs.notes)
         
-        # Persist update
+        # Save updated observation to database
         db.session.commit()
         
-        # Return updated data as JSON with ISO timestamp
+        # Return updated observation as JSON
         return jsonify(observation_schema.dump(obs)), 200
         
     except Exception as e:
+        # If anything goes wrong, roll back DB changes and return error
         db.session.rollback()
         return jsonify({
             "error": "Failed to update observation",
             "code": 500
         }), 500
 
+
 # US-11: PATCH /observations/<id> - Partial update (protected from historical edits)
 @app.patch("/observations/<int:obs_id>")
-@jwt_required()  # US-13: Protect with JWT
+@jwt_required()  # Only authenticated users can patch an observation
 def update_observation_partial(obs_id):
-    # Fetch existing observation
+    # Fetch existing observation or 404
     obs = Observation.query.get_or_404(obs_id)
     
-    # US-11: Check if historical (before current quarter)
+    # Block historical data edits
     current_quarter_start = get_current_quarter_start()
     if obs.timestamp < current_quarter_start:
         return jsonify({
@@ -507,7 +588,7 @@ def update_observation_partial(obs_id):
             "code": 403
         }), 403  # Uses existing 403 handler
     
-    # US-10: Parse JSON payload for partial update
+    # Read partial JSON body
     data = request.get_json()
     if not data:
         return jsonify({
@@ -516,7 +597,7 @@ def update_observation_partial(obs_id):
         }), 400
     
     try:
-        # Update only provided fields
+        # Only update provided fields
         if 'timestamp' in data:
             try:
                 new_timestamp = datetime.fromisoformat(data['timestamp'].replace('Z', '+00:00'))
@@ -538,25 +619,28 @@ def update_observation_partial(obs_id):
         if 'notes' in data:
             obs.notes = data['notes']
         
-        # Persist update
+        # Save partial update
         db.session.commit()
         
-        # Return updated data as JSON with ISO timestamp
+        # Return updated observation
         return jsonify(observation_schema.dump(obs)), 200
         
     except Exception as e:
+        # Roll back if update fails
         db.session.rollback()
         return jsonify({
             "error": "Failed to update observation",
             "code": 500
         }), 500
 
+
 # US-09: GET /observations with filtering support
 @app.get("/observations")
-@jwt_required()
+@jwt_required()  # Protected: requires valid JWT in Authorization header
 def get_observations():
     """
-    Get observations with optional filters
+    Returns observations, optionally filtered by date range and/or location.
+    This implements US-09: parameter-based filtering.
     ---
     tags:
       - Observations
@@ -598,19 +682,21 @@ def get_observations():
             code:
               type: integer
     """
-    current_user_id = get_jwt_identity()  # This is now a string
-    # Convert to int if you need to query by user_id: int(current_user_id)
+    # Get the current logged-in user ID from the JWT (not used in filter yet but available)
+    current_user_id = get_jwt_identity()
+    # You could convert to int if you tied observations to specific users
+    # user_id = int(current_user_id)
     
-    # Start with all records
+    # Start with all observation records
     query = Observation.query
 
-    # US-09: Parameter-based filtering via query params
+    # Read query parameters for filtering
     start_date_str = request.args.get('start_date')  # e.g., "2025-11-01T00:00:00"
     end_date_str = request.args.get('end_date')      # e.g., "2025-11-30T23:59:59"
-    lat_str = request.args.get('lat')               # e.g., "40.7"
-    long_str = request.args.get('long')             # e.g., "-74.0"
+    lat_str = request.args.get('lat')                # e.g., "40.7"
+    long_str = request.args.get('long')              # e.g., "-74.0"
 
-    # Date range filtering
+    # Filter by start date if provided
     if start_date_str:
         try:
             start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
@@ -621,6 +707,7 @@ def get_observations():
                 "code": 400
             }), 400
 
+    # Filter by end date if provided
     if end_date_str:
         try:
             end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
@@ -631,28 +718,28 @@ def get_observations():
                 "code": 400
             }), 400
 
-    # Location filtering
+    # Filter by exact coordinates if both lat and long are provided
     if lat_str and long_str:
         location_filter = f"lat={lat_str},long={long_str}"
         query = query.filter(Observation.coordinates == location_filter)
     elif lat_str or long_str:
+        # If only one of lat/long is provided, return an error
         return jsonify({
             "error": "Both 'lat' and 'long' parameters are required for location filtering",
             "code": 400
         }), 400
 
-    
-    # Execute query and serialize to JSON
+    # Execute the query and serialize results to JSON
     results = query.all()
     return jsonify(observations_schema.dump(results)), 200
 
 
 # US-12: Bulk create observations
-
 @app.post("/observations/bulk")
 def bulk_create_observations():
     """
-    Bulk create observations
+    Bulk create observations in one request (US-12).
+    If any record is invalid, the whole operation fails and errors are returned.
     ---
     tags:
       - Observations
@@ -713,8 +800,10 @@ def bulk_create_observations():
                   error:
                     type: string
     """
+    # Read JSON body from the request
     data = request.get_json()
 
+    # Ensure the payload is a list (array) of observation objects
     if not isinstance(data, list):
         return jsonify({
             "error": "Bad Request",
@@ -722,22 +811,25 @@ def bulk_create_observations():
             "code": 400
         }), 400
 
-    created = []
-    errors = []
+    created = []  # Will store successfully created Observation objects
+    errors = []   # Will store any validation errors per record
 
+    # Loop through each record in the input array
     for index, item in enumerate(data):
-        # Validate required fields
+        # Define required fields for each observation
         required = ["timestamp", "timezone", "coordinates", "satellite_id"]
+        # Check which required fields are missing
         missing = [f for f in required if f not in item]
 
         if missing:
+            # Record validation error but do not create this record
             errors.append({
                 "record": index,
                 "error": f"Missing required fields: {', '.join(missing)}"
             })
             continue
 
-        # Parse timestamp safely
+        # Try to parse timestamp; if invalid, record an error for this item
         try:
             timestamp = datetime.fromisoformat(item["timestamp"].replace("Z", "+00:00"))
         except ValueError:
@@ -747,7 +839,7 @@ def bulk_create_observations():
             })
             continue
 
-        # Create record
+        # Build Observation instance from provided data
         obs = Observation(
             timestamp=timestamp,
             timezone=item.get("timezone"),
@@ -757,10 +849,11 @@ def bulk_create_observations():
             notes=item.get("notes")
         )
 
+        # Stage object for insertion
         db.session.add(obs)
         created.append(obs)
 
-    # If ANY errors → rollback everything
+    # If any errors occurred, roll back everything (no records saved)
     if errors:
         db.session.rollback()
         return jsonify({
@@ -768,68 +861,78 @@ def bulk_create_observations():
             "errors": errors
         }), 400
 
-    # Otherwise commit all
+    # If all records valid, commit everything in one transaction
     db.session.commit()
 
+    # Return success message and the created records
     return jsonify({
         "message": "Bulk insert successful",
         "created_count": len(created),
         "records": observations_schema.dump(created)
     }), 201
 
+
 # ============================================
 # TEST ENDPOINTS (For verifying error handlers)
 # ============================================
+
 @app.post("/test-bad-request")
 def test_bad_request():
+    # This endpoint intentionally raises a 400 BadRequest to test error handler
     from werkzeug.exceptions import BadRequest
     raise BadRequest("Invalid JSON format or missing required fields")
 
 
 @app.get("/test-unauthorized")
 def test_unauthorized():
+    # Intentionally raise a 401 Unauthorized error to test handler
     from werkzeug.exceptions import Unauthorized
     raise Unauthorized("Invalid or missing authentication token")
 
 
 @app.get("/test-forbidden")
 def test_forbidden():
+    # Intentionally raise a 403 Forbidden error to test handler
     from werkzeug.exceptions import Forbidden
     raise Forbidden("You do not have permission to access this resource")
 
 
 @app.post("/test-validate")
 def test_validate():
+    # Intentionally raise a 422 UnprocessableEntity to test validation error format
     from werkzeug.exceptions import UnprocessableEntity
     raise UnprocessableEntity("Data validation failed")
 
 
 @app.get("/test-rate-limit")
 def test_rate_limit():
+    # Intentionally raise 429 TooManyRequests to test rate limit response
     from werkzeug.exceptions import TooManyRequests
     raise TooManyRequests("You have made too many requests. Please wait before trying again")
 
 
 @app.get("/test-server-error")
 def test_server_error():
+    # Force a generic exception to see our global 500 handler in action
     raise Exception("Simulated server crash")
 
 
 @app.get("/test-unavailable")
 def test_unavailable():
+    # Intentionally raise 503 ServiceUnavailable
     from werkzeug.exceptions import ServiceUnavailable
     raise ServiceUnavailable("Service is temporarily unavailable")
+
 
 # ============================================
 # NOTES
 # ============================================
-# Use @jwt_required() decorator on any endpoint that needs JWT protection
-# Test with: curl -H "Authorization: Bearer <token>" http://localhost:5000/observations
-# Get token from /auth/login endpoint (POST with username and password)
+# Use @jwt_required() on any endpoint that should require login/JWT.
+# Example test:
+# 1) POST /auth/login with JSON {"username":"testuser","password":"testpass"}
+# 2) Copy access_token from response
+# 3) Call protected endpoints with header: Authorization: Bearer <access_token>
 
-# -----------------------------
-# RUN SERVER
-# -----------------------------
 
 # ============================================
 # US-22: Simple ORM demo for Dataset
@@ -838,7 +941,8 @@ def test_unavailable():
 @app.post("/datasets/demo")
 def create_demo_dataset():
     """
-    Create a demo dataset (US-22 ORM check)
+    Quick demo endpoint to show ORM insert with SQLAlchemy for Dataset.
+    Creates a 'Demo dataset' row in the datasets table.
     ---
     tags:
       - Datasets
@@ -850,15 +954,16 @@ def create_demo_dataset():
         name="Demo dataset",
         description="Created via SQLAlchemy ORM"
     )
-    db.session.add(demo)
-    db.session.commit()
+    db.session.add(demo)   # Stage new Dataset object for insert
+    db.session.commit()    # Save changes to DB
     return jsonify(dataset_schema.dump(demo)), 201
 
 
 @app.get("/datasets")
 def list_datasets():
     """
-    List all datasets (US-22 ORM check)
+    Returns all Dataset records stored in the database.
+    This shows how SQLAlchemy ORM is used to query and Marshmallow to serialize.
     ---
     tags:
       - Datasets
@@ -866,8 +971,13 @@ def list_datasets():
       200:
         description: List of Dataset objects mapped from the database
     """
-    all_datasets = Dataset.query.all()
+    all_datasets = Dataset.query.all()  # Query all dataset rows
     return jsonify(datasets_schema.dump(all_datasets)), 200
 
+
+# -----------------------------
+# RUN SERVER
+# -----------------------------
 if __name__ == "__main__":
+    # Start the Flask development server with debug mode on
     app.run(debug=True)
