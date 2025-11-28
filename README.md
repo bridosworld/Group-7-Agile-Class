@@ -19,6 +19,9 @@ source .venv/Scripts/activate
 Install the required packages:
 pip install flask flask-sqlalchemy flask-marshmallow marshmallow-sqlalchemy
 
+pip install flasgger
+pip install PyYAML
+
 Start API:
 python app.py
 
@@ -30,161 +33,482 @@ http://127.0.0.1:5000/health
 
 Expected output:
 { "status": "ok" }
+ # Testing:
 
-This confirms the API works and is ready for other Sprint 1 user stories.
+Step 1 — Run the API
 
-# US-08: Global JSON Config and Error Handling
+Open VS Code terminal and run:
 
-This user story configures the API to handle non-ASCII characters in JSON responses globally (via app.config['JSON_AS_ASCII'] = False) and implements standardized error handlers for common HTTP status codes. These ensure consistent, user-friendly error responses in JSON format, improving API reliability and developer experience.
-Error handlers cover:
-
-400 Bad Request: Invalid input (e.g., malformed JSON).
-401 Unauthorized: Authentication failures (e.g., invalid tokens).
-403 Forbidden: Access denied despite authentication.
-404 Not Found: Missing endpoints.
-405 Method Not Allowed: Incorrect HTTP method.
-422 Unprocessable Entity: Valid format but invalid business logic (e.g., data validation).
-429 Too Many Requests: Rate limiting exceeded.
-500 Internal Server Error: Unexpected server issues.
-503 Service Unavailable: Temporary server downtime.
-
-To test these (and the root/health endpoints), save the following as requests.http and run with VS Code's REST Client extension. 
-
-### Test health endpoint
-GET http://127.0.0.1:5000/health
-
-### Test root endpoint
-GET http://127.0.0.1:5000/
-
-### Test 404 error - Endpoint not found
-GET http://127.0.0.1:5000/notfound
-
-### Test 405 error - Wrong HTTP method
-POST http://127.0.0.1:5000/health
-
-### Test 400 error - Bad request
-POST http://127.0.0.1:5000/health
-Content-Type: application/json
-
-{invalid json}
-
-### Test 401 error - Unauthorized
-GET http://127.0.0.1:5000/health
-Authorization: Bearer invalid_token
-
-### Test 403 error - Forbidden
-GET http://127.0.0.1:5000/forbidden
-
-### Test 422 error - Unprocessable entity
-POST http://127.0.0.1:5000/validate
-Content-Type: application/json
-
-{"age": "not_a_number"}
-
-### Test 429 error - Too many requests
-GET http://127.0.0.1:5000/health
-GET http://127.0.0.1:5000/health
-GET http://127.0.0.1:5000/health
-
-### Test 503 error - Service unavailable
-GET http://127.0.0.1:5000/unavailable
-
-It demonstrates expected responses for success and errors, helping the team verify US-08 functionality.
-
-
-
-
-US-06 & US-12 – How to Run and Test
-US-06: API Documentation (Swagger / OpenAPI)
-This user story adds Swagger documentation to the API so developers can view and test endpoints in a browser.
-To run and test it:
-
-1. Install required packages (Git Bash)
-Inside your project folder, activate your virtual environment:
-source .venv/Scripts/activate
-Then install Swagger support:
-pip install flasgger
-pip install PyYAML
-
-2. Start the API
 python app.py
-The server will run at:
-http://127.0.0.1:5000
 
-3. Open Swagger UI
-Open this URL in your browser:
+
+Step 2 — Get your JWT token (NEEDED for many US tests)
+
+In Postman:
+
+POST
+http://127.0.0.1:5000/auth/login
+
+Body → raw → JSON:
+
+{
+  "username": "testuser",
+  "password": "testpass"
+}
+
+Copy the access_token.
+
+# US-05 — ERROR HANDLING
+🎯 Goal: Make sure your 400/401/403/422/429/500/503 handlers work.
+Test 1 — 400 BAD REQUEST
+
+Postman →
+POST
+http://127.0.0.1:5000/test-bad-request
+
+Expected:
+
+{
+  "error": "Bad Request",
+  "message": "Invalid JSON format or missing required fields",
+  "code": 400
+}
+
+Test 2 — 401 UNAUTHORIZED
+
+GET
+http://127.0.0.1:5000/test-unauthorized
+
+Expected:
+
+{
+  "error": "Unauthorized",
+  "message": "Invalid or missing authentication token",
+  "code": 401
+}
+
+Test 3 — 403 FORBIDDEN
+
+GET
+http://127.0.0.1:5000/test-forbidden
+
+Expected:
+
+{
+  "error": "Forbidden",
+  "message": "You do not have permission to access this resource",
+  "code": 403
+}
+
+Test 4 — 422 VALIDATION
+
+POST
+http://127.0.0.1:5000/test-validate
+
+Expected:
+
+{
+  "error": "Unprocessable Entity",
+  "message": "Data validation failed",
+  "code": 422
+}
+
+Test 5 — 429 RATE LIMIT
+
+GET
+http://127.0.0.1:5000/test-rate-limit
+
+Test 6 — 500 INTERNAL ERROR
+
+GET
+http://127.0.0.1:5000/test-server-error
+
+Test 7 — 503 SERVICE UNAVAILABLE
+
+GET
+http://127.0.0.1:5000/test-unavailable
+
+# US-06 — SWAGGER / OPENAPI
+How to test
+
+Open your browser and go to:
+
 http://127.0.0.1:5000/apidocs/
-You should now see Swagger UI and the documentation for all available endpoints.
 
-4. Validate the OpenAPI spec
-The raw OpenAPI spec is here:
-http://127.0.0.1:5000/apispec_1.json
-You can validate it by pasting it into:
-https://editor.swagger.io/
-There should be no errors.
 
-US-12: Bulk Operations (Bulk Create Observations)
-This user story allows creating multiple observation records in a single request.
-All records must be valid or the entire operation is rolled back.
-To test this new endpoint:
+Expected:
+You should see the Swagger UI showing all your endpoints.
 
-1. Start the API
-(If not already running)
-python app.py
+# US-07 — CRUD METHODS ON /items
 
-2. Send a bulk request
-Use Postman.
-Send a POST request to:
-http://127.0.0.1:5000/observations/bulk
-Set header:
-Content-Type: application/json
-Use this JSON example:
+No authentication needed.
+
+Test GET
+
+Postman → GET
+http://127.0.0.1:5000/items
+
+Expected:
+
+{"message": "GET OK", "items": []}
+
+Test POST
+
+POST → /items
+(no body needed)
+
+Expected:
+
+{"message": "POST OK", "details": "Item created (dummy)"}
+
+Test PUT
+
+PUT → /items/1
+
+Expected:
+
+{"message": "PUT OK", "id": 1, "details": "Full update completed (dummy)"}
+
+Test PATCH
+
+PATCH → /items/1
+
+Expected:
+
+{"message": "PATCH OK", "id": 1, "details": "Partial update completed (dummy)"}
+
+Test DELETE
+
+DELETE → /items/1
+
+Expected:
+
+{"message": "DELETE OK", "id": 1, "details": "Item deleted (dummy)"}
+
+# US-08 — HEALTH CHECK
+
+GET →
+http://127.0.0.1:5000/health
+
+Expected:
+
+{"status": "ok"}
+
+# US-09
+
+Get the Access Token
+Method: POST
+
+URL: http://127.0.0.1:5000/auth/login
+
+Body → raw → JSON:
+
+{
+  "username": "testuser",
+  "password": "testpass"
+}
+
+
+Click Send → copy the "access_token" value from the response (long JWT string).
+Now test US-09: GET /observations
+
+Method: GET
+
+URL:
+
+http://127.0.0.1:5000/observations
+
+
+Go to the Headers tab:
+
+Key = Authorization
+
+Value = Bearer YOUR ACCESS TOKEN
+
+Click Send → you should get [] or a list of observations with 200 OK
+
+# US-10 – Store Geospatial Observation Data (POST /observations)
+1. Get the Access Token
+
+You already know this, but for completeness:
+
+Method: POST
+URL: http://127.0.0.1:5000/auth/login
+Body → raw → JSON:
+
+{
+  "username": "testuser",
+  "password": "testpass"
+}
+
+
+Copy "access_token".
+
+2. Create a valid observation (Happy path)
+
+Method: POST
+URL: http://127.0.0.1:5000/observations
+
+Headers:
+
+Content-Type = application/json
+
+Authorization = Bearer YOUR_ACCESS_TOKEN_HERE
+
+Body → raw → JSON (example within current quarter):
+
+{
+  "timestamp": "2025-11-27T12:00:00",
+  "timezone": "UTC",
+  "coordinates": "lat=53.5,long=-2.4",
+  "satellite_id": "TS-001",
+  "spectral_indices": "{\"ndvi\": 0.72}",
+  "notes": "Sample observation created for US-10 test"
+}
+
+
+Click Send
+Expected: 201 Created with JSON of the observation (including an id).
+
+3. Invalid timestamp format (error path)
+
+Same request but break the timestamp:
+
+{
+  "timestamp": "27-11-2025 12:00",
+  "timezone": "UTC",
+  "coordinates": "lat=53.5,long=-2.4",
+  "satellite_id": "TS-001",
+  "spectral_indices": "{\"ndvi\": 0.72}",
+  "notes": "Bad timestamp"
+}
+
+
+Expected: 400 Bad Request with message like
+"Invalid timestamp format. Use ISO 8601..."
+
+4. Missing required timestamp (error path)
+
+Remove timestamp:
+
+{
+  "timezone": "UTC",
+  "coordinates": "lat=53.5,long=-2.4",
+  "satellite_id": "TS-001",
+  "spectral_indices": "{\"ndvi\": 0.72}",
+  "notes": "No timestamp"
+}
+
+
+Expected: 400 Bad Request with error about missing timestamp.
+
+# US-11 – Protected historical updates (PUT / PATCH /observations/<id>)
+
+First you need at least one observation in the DB (created via US-10 step 2).
+
+Let’s assume the created observation had id = 1.
+(If not sure, call GET /observations first and check the IDs.)
+
+1. Happy path: Update a current observation (PUT)
+
+Method: PUT
+URL: http://127.0.0.1:5000/observations/1
+
+Headers:
+
+Content-Type = application/json
+
+Authorization = Bearer YOUR_ACCESS_TOKEN_HERE
+
+Body → raw → JSON:
+
+{
+  "timestamp": "2025-11-28T10:00:00",
+  "timezone": "UTC",
+  "coordinates": "lat=53.6,long=-2.3",
+  "satellite_id": "TS-002",
+  "spectral_indices": "{\"ndvi\": 0.80}",
+  "notes": "Updated full observation via PUT"
+}
+
+Expected:
+200 OK, JSON of the updated observation with changed fields.
+
+2. Happy path: Partial update (PATCH)
+
+Method: PATCH
+URL: http://127.0.0.1:5000/observations/1
+
+Headers:
+
+Content-Type = application/json
+
+Authorization = Bearer YOUR_ACCESS_TOKEN_HERE
+
+Body → raw → JSON (only some fields):
+
+{
+  "notes": "Patched notes only (US-11 test)",
+  "spectral_indices": "{\"ndvi\": 0.83}"
+}
+
+Expected:
+200 OK, JSON of the observation with only those fields changed.
+
+3. Invalid timestamp on update
+
+Same as PUT or PATCH, but with a broken timestamp format:
+
+{
+  "timestamp": "28-11-2025 10:00"
+}
+
+Expected:
+400 Bad Request with "Invalid timestamp format...".
+
+# US-12 – Bulk create observations (POST /observations/bulk)
+1. Happy path bulk insert
+
+Method: POST
+URL: http://127.0.0.1:5000/observations/bulk
+
+(This one is not protected with @jwt_required() in your code, so no token needed.)
+
+Headers:
+
+Content-Type = application/json
+
+Body → raw → JSON:
+
 [
   {
-    "timestamp": "2025-11-27T12:00:00",
+    "timestamp": "2025-11-28T09:00:00",
     "timezone": "UTC",
     "coordinates": "lat=53.5,long=-2.4",
-    "satellite_id": "SAT-1",
-    "spectral_indices": { "NDVI": 0.6 },
-    "notes": "bulk record 1"
+    "satellite_id": "TS-101",
+    "spectral_indices": { "ndvi": 0.60 },
+    "notes": "Bulk obs 1"
   },
   {
-    "timestamp": "2025-11-27T13:00:00",
+    "timestamp": "2025-11-28T09:10:00",
     "timezone": "UTC",
-    "coordinates": "lat=53.6,long=-2.5",
-    "satellite_id": "SAT-2",
-    "spectral_indices": { "NDVI": 0.7 },
-    "notes": "bulk record 2"
+    "coordinates": "lat=53.6,long=-2.3",
+    "satellite_id": "TS-102",
+    "spectral_indices": { "ndvi": 0.65 },
+    "notes": "Bulk obs 2"
   }
 ]
 
-3. Expected successful response (201)
-{
-  "message": "Bulk insert successful",
-  "created_count": 2,
-  "records": [...]
-}
 
-4. Test failure scenario
-Try sending one valid record + one invalid timestamp:
+Expected:
+201 Created
+Body with:
+
+"message": "Bulk insert successful"
+
+"created_count": 2
+
+"records": [...] list of created observations.
+
+2. Bulk validation error (rollback all)
+
+Send a list where one item is missing a required field, e.g. no timestamp:
+
 [
   {
-    "timestamp": "2025-11-27T12:00:00",
+    "timestamp": "2025-11-28T09:00:00",
     "timezone": "UTC",
     "coordinates": "lat=53.5,long=-2.4",
-    "satellite_id": "SAT-1"
+    "satellite_id": "TS-101",
+    "spectral_indices": { "ndvi": 0.60 },
+    "notes": "Good one"
   },
   {
-    "timestamp": "INVALID",
     "timezone": "UTC",
-    "coordinates": "lat=53.6,long=-2.5",
-    "satellite_id": "SAT-2"
+    "coordinates": "lat=53.6,long=-2.3",
+    "satellite_id": "TS-102",
+    "spectral_indices": { "ndvi": 0.65 },
+    "notes": "Missing timestamp"
   }
 ]
-Expected response:
-{
-  "message": "Bulk insert failed",
-  "errors": [...]
-}
-This confirms partial failure handling works correctly.
 
+
+Expected:
+400 Bad Request
+
+"message": "Bulk insert failed"
+
+"errors" array mentioning the missing fields.
+
+# US-13 – JWT Auth + Protected Route
+
+You basically already did this, but here’s the checklist.
+
+1. Valid login
+
+POST http://127.0.0.1:5000/auth/login
+Body:
+
+{
+  "username": "testuser",
+  "password": "testpass"
+}
+
+
+200 + access_token.
+
+2. Protected route without token
+
+GET http://127.0.0.1:5000/protected
+(no Authorization header)
+
+Expected: 401 Unauthorized with "Missing Authorization Header" (or similar).
+
+3. Protected route with valid token
+
+GET http://127.0.0.1:5000/protected
+Headers:
+
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+Expected:
+200 OK
+
+{
+  "message": "Access granted",
+  "user_id": 1
+}
+
+# US-19 + US-22 – ORM & Datasets (/datasets/demo, /datasets)
+
+These two show that SQLAlchemy models map to the DB and can be queried.
+
+1. Create demo dataset (ORM insert)
+
+Method: POST
+URL: http://127.0.0.1:5000/datasets/demo
+
+(no body, no auth)
+
+Expected:
+201 Created with JSON something like:
+
+{
+  "id": 1,
+  "name": "Demo dataset",
+  "description": "Created via SQLAlchemy ORM"
+}
+
+2. List datasets (ORM read)
+
+Method: GET
+URL: http://127.0.0.1:5000/datasets
+
+Expected:
+200 OK with an array of dataset objects, including the demo one.
+
+This directly matches US-22 DoD / acceptance criteria:
+
+“Given database connection, when queried, then ORM maps objects.” → /datasets shows DB rows as Python objects → JSON.
+
+“Given model changes, when migrated, then schema updates.” → You can mention that changing Dataset and recreating DB updates schema (even if you don’t fully demo migrations in Sprint-1).
