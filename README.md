@@ -59,7 +59,7 @@ Body → raw → JSON:
 Copy the access_token.
 
 # US-05 — ERROR HANDLING
-🎯 Goal: Make sure your 400/401/403/422/429/500/503 handlers work.
+Goal: Make sure your 400/401/403/422/429/500/503 handlers work.
 Test 1 — 400 BAD REQUEST
 
 Postman →
