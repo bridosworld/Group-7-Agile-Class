@@ -435,33 +435,6 @@ def delete_item(item_id):
         "details": "Item deleted (dummy)"
     }), 200
 
-
-# US-09: GET /observations with filtering support
-
-        # Create new Observation instance
-        new_observation = Observation(
-            timestamp=timestamp_dt,
-            timezone=data.get('timezone'),
-            coordinates=data.get('coordinates'),  # e.g., "lat=40.7,long=-74.0"
-            satellite_id=data.get('satellite_id'),
-            spectral_indices=data.get('spectral_indices'),  # e.g., JSON string like '{"ndvi": 0.5}'
-            notes=data.get('notes')
-        )
-        
-        # Persist to DB
-        db.session.add(new_observation)
-        db.session.commit()
-        
-        # US-10: Return persisted data as JSON with ISO timestamp (schema handles serialization)
-        return jsonify(observation_schema.dump(new_observation)), 201  # 201 Created
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            "error": "Failed to store observation",
-            "code": 500
-        }), 500  # Uses existing handler
-
 # US-11: PUT /observations/<id> - Full update (protected from historical edits)
 @app.put("/observations/<int:obs_id>")
 @jwt_required()  # US-13: Protect with JWT
