@@ -1,9 +1,9 @@
-
 from flask import Flask, jsonify, request
-
+from flask_jwt_extended import jwt_required, get_jwt_identity
+import json
+import re
 import datetime
 import jwt
-import json
 from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
@@ -180,20 +180,24 @@ def create_tables_once():
 # US-11: Helper function for quarter boundary checks
 def get_current_quarter_start():
     """
-    US-11: Returns the start date of the current calendar quarter.
-    Example: if month is 10, this returns 1st October of the current year.
+    US-11: Calculate the start date of the current quarter
+    Returns datetime object for the first day of current quarter at 00:00:00
     """
-    now = datetime.now()  # Get current date and time
-    # Work out which quarter we are in, then build a date at the start of that quarter
-    if now.month <= 3:
-        quarter_start = datetime(now.year, 1, 1)   # Q1: Jan 1
-    elif now.month <= 6:
-        quarter_start = datetime(now.year, 4, 1)   # Q2: Apr 1
-    elif now.month <= 9:
-        quarter_start = datetime(now.year, 7, 1)   # Q3: Jul 1
-    else:  # 10-12
-        quarter_start = datetime(now.year, 10, 1)  # Q4: Oct 1
-    return quarter_start
+    now = datetime.now()
+    current_month = now.month
+    
+    # Determine quarter start month (1, 4, 7, or 10)
+    if current_month <= 3:
+        quarter_start_month = 1  # Q1: Jan-Mar
+    elif current_month <= 6:
+        quarter_start_month = 4  # Q2: Apr-Jun
+    elif current_month <= 9:
+        quarter_start_month = 7  # Q3: Jul-Sep
+    else:
+        quarter_start_month = 10  # Q4: Oct-Dec
+    
+    # Return first day of quarter at midnight
+    return datetime(now.year, quarter_start_month, 1, 0, 0, 0)
 
 
 # ============================================
@@ -334,7 +338,7 @@ def login():
             "token_type": "Bearer",         # Token type (standard prefix)
             "user_id": user.id,             # User ID for client reference
             "message": "Login successful"
-        }), 200
+        }, 200)
     else:
         # Return error if username/password are incorrect
         return jsonify({
@@ -409,7 +413,7 @@ def create_item():
     return jsonify({
         "message": "POST OK",
         "details": "Item created (dummy)"
-    }), 201
+    }, 201)
 
 
 @app.put("/items/<int:item_id>")
@@ -514,123 +518,176 @@ def delete_item(item_id):
 
 # US-11: PUT /observations/<id> - Full update (protected from historical edits)
 @app.put("/observations/<int:obs_id>")
-@jwt_required()  # US-13: Protect this route so only logged-in users can update
+@jwt_required()
 def update_observation_full(obs_id):
-    # Fetch existing observation or return 404 if not found
-    obs = Observation.query.get_or_404(obs_id)
-    
-    # US-11: Check if observation is older than the start of current quarter
-    current_quarter_start = get_current_quarter_start()
-    if obs.timestamp < current_quarter_start:
-        # If record is historical, block the update
-        return jsonify({
-            "error": "Historical data cannot be modified",
-            "message": f"Records before {current_quarter_start.date()} are immutable",
-            "code": 403
-        }), 403  # Uses existing 403 handler
-    
-    # Read JSON body for the update
-    data = request.get_json()
-    if not data:
-        return jsonify({
-            "error": "No JSON payload provided",
-            "code": 400
-        }), 400
-    
+    """
+    US-11: Full update (PUT) with historical data protection
+    Returns 403 if observation is from previous quarter
+    """
     try:
-        # Handle timestamp if provided in the update
-        timestamp_str = data.get('timestamp')
-        if timestamp_str:
-            try:
-                new_timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-                obs.timestamp = new_timestamp
-            except ValueError:
-                return jsonify({
-                    "error": "Invalid timestamp format. Use ISO 8601 (e.g., 2025-11-27T12:00:00)",
-                    "code": 400
-                }), 400
+        # Fetch observation or return 404
+        obs = Observation.query.get_or_404(obs_id)
         
-        # Update other fields, defaulting to old value if not provided
-        obs.timezone = data.get('timezone', obs.timezone)
-        obs.coordinates = data.get('coordinates', obs.coordinates)
-        obs.satellite_id = data.get('satellite_id', obs.satellite_id)
-        obs.spectral_indices = data.get('spectral_indices', obs.spectral_indices)
-        obs.notes = data.get('notes', obs.notes)
+        # US-11: Check if observation is historical (before current quarter)
+        current_quarter_start = get_current_quarter_start()
         
-        # Save updated observation to database
+        if obs.timestamp < current_quarter_start:
+            return jsonify({
+                "error": "Historical data cannot be modified",
+                "message": f"Records before {current_quarter_start.date()} are immutable",
+                "code": 403
+            }), 403
+        
+        # Get request data
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'error': 'Empty request body',
+                'code': 400
+            }), 400
+        
+        # Validate all required fields are present for PUT
+        required_fields = ['timestamp', 'timezone', 'coordinates', 'satellite_id', 'spectral_indices']
+        missing_fields = [field for field in required_fields if field not in data]
+        
+        if missing_fields:
+            return jsonify({
+                'error': f'Missing required fields for full update: {", ".join(missing_fields)}',
+                'code': 400
+            }), 400
+        
+        # Validate spectral_indices is a dict
+        if not isinstance(data['spectral_indices'], dict):
+            return jsonify({
+                'error': 'spectral_indices must be a JSON object',
+                'code': 400
+            }), 400
+        
+        # Validate and parse ISO 8601 timestamp
+        timestamp_str = data['timestamp']
+        iso8601_pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}'
+        
+        if not re.match(iso8601_pattern, timestamp_str):
+            return jsonify({
+                'error': 'Invalid timestamp format. Expected ISO 8601 (YYYY-MM-DDTHH:MM:SS)',
+                'code': 400
+            }), 400
+        
+        try:
+            # Parse timestamp - handles Z, +00:00, milliseconds, etc.
+            parsed_timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+            normalized_timestamp = parsed_timestamp.replace(tzinfo=None)
+        except (ValueError, AttributeError):
+            return jsonify({
+                'error': 'Invalid timestamp format. Expected ISO 8601 (YYYY-MM-DDTHH:MM:SS)',
+                'code': 400
+            }), 400
+        
+        # Update all fields
+        obs.timestamp = normalized_timestamp
+        obs.timezone = data['timezone']
+        obs.coordinates = data['coordinates']
+        obs.satellite_id = data['satellite_id']
+        obs.spectral_indices = json.dumps(data['spectral_indices'])
+        obs.notes = data.get('notes')  # Optional field
+        
+        # Commit changes
         db.session.commit()
         
-        # Return updated observation as JSON
+        # Return updated observation with 200 (not 201)
         return jsonify(observation_schema.dump(obs)), 200
         
     except Exception as e:
-        # If anything goes wrong, roll back DB changes and return error
         db.session.rollback()
         return jsonify({
-            "error": "Failed to update observation",
-            "code": 500
+            'error': f'Failed to update observation: {str(e)}',
+            'code': 500
         }), 500
 
 
 # US-11: PATCH /observations/<id> - Partial update (protected from historical edits)
 @app.patch("/observations/<int:obs_id>")
-@jwt_required()  # Only authenticated users can patch an observation
+@jwt_required()
 def update_observation_partial(obs_id):
-    # Fetch existing observation or 404
-    obs = Observation.query.get_or_404(obs_id)
-    
-    # Block historical data edits
-    current_quarter_start = get_current_quarter_start()
-    if obs.timestamp < current_quarter_start:
-        return jsonify({
-            "error": "Historical data cannot be modified",
-            "message": f"Records before {current_quarter_start.date()} are immutable",
-            "code": 403
-        }), 403  # Uses existing 403 handler
-    
-    # Read partial JSON body
-    data = request.get_json()
-    if not data:
-        return jsonify({
-            "error": "No JSON payload provided",
-            "code": 400
-        }), 400
-    
+    """
+    US-11: Partial update (PATCH) with historical data protection
+    Returns 403 if observation is from previous quarter
+    """
     try:
-        # Only update provided fields
+        # Fetch observation or return 404
+        obs = Observation.query.get_or_404(obs_id)
+        
+        # US-11: Check if observation is historical (before current quarter)
+        current_quarter_start = get_current_quarter_start()
+        
+        if obs.timestamp < current_quarter_start:
+            return jsonify({
+                "error": "Historical data cannot be modified",
+                "message": f"Records before {current_quarter_start.date()} are immutable",
+                "code": 403
+            }), 403
+        
+        # Get request data
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'error': 'Empty request body',
+                'code': 400
+            }), 400
+        
+        # Update only provided fields
         if 'timestamp' in data:
-            try:
-                new_timestamp = datetime.fromisoformat(data['timestamp'].replace('Z', '+00:00'))
-                obs.timestamp = new_timestamp
-            except ValueError:
+            timestamp_str = data['timestamp']
+            iso8601_pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}'
+            
+            if not re.match(iso8601_pattern, timestamp_str):
                 return jsonify({
-                    "error": "Invalid timestamp format. Use ISO 8601 (e.g., 2025-11-27T12:00:00)",
-                    "code": 400
+                    'error': 'Invalid timestamp format. Expected ISO 8601 (YYYY-MM-DDTHH:MM:SS)',
+                    'code': 400
+                }), 400
+            
+            try:
+                parsed_timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                obs.timestamp = parsed_timestamp.replace(tzinfo=None)
+            except (ValueError, AttributeError):
+                return jsonify({
+                    'error': 'Invalid timestamp format. Expected ISO 8601 (YYYY-MM-DDTHH:MM:SS)',
+                    'code': 400
                 }), 400
         
         if 'timezone' in data:
             obs.timezone = data['timezone']
+        
         if 'coordinates' in data:
             obs.coordinates = data['coordinates']
+        
         if 'satellite_id' in data:
             obs.satellite_id = data['satellite_id']
+        
         if 'spectral_indices' in data:
-            obs.spectral_indices = data['spectral_indices']
+            if not isinstance(data['spectral_indices'], dict):
+                return jsonify({
+                    'error': 'spectral_indices must be a JSON object',
+                    'code': 400
+                }), 400
+            obs.spectral_indices = json.dumps(data['spectral_indices'])
+        
         if 'notes' in data:
             obs.notes = data['notes']
         
-        # Save partial update
+        # Commit changes
         db.session.commit()
         
-        # Return updated observation
+        # Return updated observation with 200 (not 201)
         return jsonify(observation_schema.dump(obs)), 200
         
     except Exception as e:
-        # Roll back if update fails
         db.session.rollback()
         return jsonify({
-            "error": "Failed to update observation",
-            "code": 500
+            'error': f'Failed to update observation: {str(e)}',
+            'code': 500
         }), 500
 
 
@@ -870,6 +927,211 @@ def bulk_create_observations():
         "created_count": len(created),
         "records": observations_schema.dump(created)
     }), 201
+
+
+# US-10: POST /observations - Create single observation
+@app.post("/observations")
+@jwt_required()
+def create_observation():
+    """
+    Create new geospatial observation
+    US-10: Store Geospatial Observation Data
+    ---
+    tags:
+      - Observations
+    consumes:
+      - application/json
+    parameters:
+      - name: body
+        in: body
+        required: true
+        description: Observation data to create
+        schema:
+          type: object
+          required:
+            - timestamp
+            - timezone
+            - coordinates
+            - satellite_id
+            - spectral_indices
+          properties:
+            timestamp:
+              type: string
+              description: ISO 8601 timestamp
+            timezone:
+              type: string
+            coordinates:
+              type: string
+            satellite_id:
+              type: string
+            spectral_indices:
+              type: object
+            notes:
+              type: string
+    responses:
+      201:
+        description: Observation created successfully
+      400:
+        description: Validation error
+      500:
+        description: Server error
+    """
+    try:
+        # Get JSON data from request
+        data = request.get_json()
+        
+        # Check if request body is empty
+        if not data:
+            return jsonify({
+                'error': 'Empty request body or missing required fields',
+                'code': 400
+            }), 400
+        
+        # Define required fields
+        required_fields = ['timestamp', 'timezone', 'coordinates', 'satellite_id', 'spectral_indices']
+        
+        # Validate required fields
+        missing_fields = []
+        invalid_fields = []
+        
+        for field in required_fields:
+            if field not in data:
+                missing_fields.append(field)
+            elif data[field] is None:
+                invalid_fields.append(f"{field} (cannot be null)")
+            elif isinstance(data[field], str) and not data[field].strip():
+                invalid_fields.append(f"{field} (cannot be empty)")
+        
+        # Return error if validation fails
+        if missing_fields:
+            return jsonify({
+                'error': f'Missing required field: {missing_fields[0]}' if len(missing_fields) == 1 
+                        else f'Missing required fields: {", ".join(missing_fields)}',
+                'code': 400
+            }), 400
+        
+        if invalid_fields:
+            return jsonify({
+                'error': f'Invalid or empty value for required field: {invalid_fields[0]}',
+                'code': 400
+            }), 400
+        
+        # Validate spectral_indices is a dict
+        if not isinstance(data['spectral_indices'], dict):
+            return jsonify({
+                'error': 'spectral_indices must be a JSON object',
+                'code': 400
+            }), 400
+        
+        # Validate and parse ISO 8601 timestamp
+        timestamp_str = data['timestamp']
+        
+        # More flexible ISO 8601 pattern (accepts with/without milliseconds, timezone)
+        iso8601_pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}'
+        if not re.match(iso8601_pattern, timestamp_str):
+            return jsonify({
+                'error': 'Invalid timestamp format. Expected ISO 8601 (YYYY-MM-DDTHH:MM:SS)',
+                'code': 400
+            }), 400
+        
+        # Parse timestamp - handles Z, +00:00, milliseconds, etc.
+        try:
+            # Replace 'Z' with '+00:00' for proper parsing
+            parsed_timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+            # Store without timezone info (normalized)
+            normalized_timestamp = parsed_timestamp.replace(tzinfo=None)
+        except (ValueError, AttributeError) as e:
+            return jsonify({
+                'error': 'Invalid timestamp format. Expected ISO 8601 (YYYY-MM-DDTHH:MM:SS)',
+                'code': 400
+            }), 400
+        
+        # Create new observation with normalized timestamp
+        new_observation = Observation(
+            timestamp=normalized_timestamp,
+            timezone=data['timezone'],
+            coordinates=data['coordinates'],
+            satellite_id=data['satellite_id'],
+            spectral_indices=json.dumps(data['spectral_indices']),
+            notes=data.get('notes')
+        )
+        
+        # Save to database
+        db.session.add(new_observation)
+        db.session.commit()
+        
+        # Return success response
+        return jsonify({
+            'message': 'Observation created successfully',
+            'observation': observation_schema.dump(new_observation)
+        }), 201
+        
+    except json.JSONDecodeError:
+        return jsonify({
+            'error': 'Invalid JSON format',
+            'code': 400
+        }), 400
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'error': f'Failed to create observation: {str(e)}',
+            'code': 500
+        }), 500
+
+
+# US-10: GET /observations/<id> - Retrieve a single observation by ID
+@app.get("/observations/<int:obs_id>")
+@jwt_required()  # Protected: requires valid JWT
+def get_observation_by_id(obs_id):
+    """
+    Returns a single observation by its ID.
+    Used for US-10 AC3 testing to verify ISO 8601 timestamp format.
+    ---
+    tags:
+      - Observations
+    parameters:
+      - name: obs_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the observation to retrieve
+    responses:
+      200:
+        description: Single observation object
+        schema:
+          type: object
+          properties:
+            id:
+              type: integer
+            timestamp:
+              type: string
+              description: ISO 8601 formatted timestamp
+            timezone:
+              type: string
+            coordinates:
+              type: string
+            satellite_id:
+              type: string
+            spectral_indices:
+              type: string
+            notes:
+              type: string
+      404:
+        description: Observation not found
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+            code:
+              type: integer
+    """
+    # Fetch observation by ID or return 404 if not found
+    obs = Observation.query.get_or_404(obs_id)
+    
+    # Return the observation as JSON
+    return jsonify(observation_schema.dump(obs)), 200
 
 
 # ============================================
