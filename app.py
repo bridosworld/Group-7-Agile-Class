@@ -1,4 +1,3 @@
-
 from flask import Flask, jsonify, request
 
 import datetime
@@ -634,104 +633,137 @@ def update_observation_partial(obs_id):
         }), 500
 
 
-# US-09: GET /observations with filtering support
-@app.get("/observations")
-@jwt_required()  # Protected: requires valid JWT in Authorization header
-def get_observations():
+# US-09 & US-10: GET and POST /observations
+@app.route("/observations", methods=['GET', 'POST'])
+@jwt_required()
+def observations():
     """
-    Returns observations, optionally filtered by date range and/or location.
-    This implements US-09: parameter-based filtering.
-    ---
-    tags:
-      - Observations
-    parameters:
-      - name: start_date
-        in: query
-        type: string
-        required: false
-        description: ISO 8601 start of timestamp range (e.g., 2025-11-01T00:00:00)
-      - name: end_date
-        in: query
-        type: string
-        required: false
-        description: ISO 8601 end of timestamp range (e.g., 2025-11-30T23:59:59)
-      - name: lat
-        in: query
-        type: string
-        required: false
-        description: Latitude used in coordinates filter
-      - name: long
-        in: query
-        type: string
-        required: false
-        description: Longitude used in coordinates filter
-    responses:
-      200:
-        description: List of observations (possibly filtered)
-        schema:
-          type: array
-          items:
-            type: object
-      400:
-        description: Invalid query parameter values
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-            code:
-              type: integer
+    Handle observations retrieval and creation
+    GET: Retrieve observations with optional filtering (US-09)
+    POST: Create new observation (US-10)
     """
-    # Get the current logged-in user ID from the JWT (not used in filter yet but available)
-    current_user_id = get_jwt_identity()
-    # You could convert to int if you tied observations to specific users
-    # user_id = int(current_user_id)
     
-    # Start with all observation records
-    query = Observation.query
+    if request.method == 'GET':
+        # Start with all observation records
+        query = Observation.query
 
-    # Read query parameters for filtering
-    start_date_str = request.args.get('start_date')  # e.g., "2025-11-01T00:00:00"
-    end_date_str = request.args.get('end_date')      # e.g., "2025-11-30T23:59:59"
-    lat_str = request.args.get('lat')                # e.g., "40.7"
-    long_str = request.args.get('long')              # e.g., "-74.0"
+        # Read query parameters for filtering
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+        lat_str = request.args.get('lat')
+        long_str = request.args.get('long')
 
-    # Filter by start date if provided
-    if start_date_str:
-        try:
-            start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
-            query = query.filter(Observation.timestamp >= start_date)
-        except ValueError:
+        # Filter by start date if provided
+        if start_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+                query = query.filter(Observation.timestamp >= start_date)
+            except ValueError:
+                return jsonify({
+                    "error": "Invalid start_date format. Use ISO 8601 (e.g., 2025-11-01T00:00:00)",
+                    "code": 400
+                }), 400
+
+        # Filter by end date if provided
+        if end_date_str:
+            try:
+                end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+                query = query.filter(Observation.timestamp <= end_date)
+            except ValueError:
+                return jsonify({
+                    "error": "Invalid end_date format. Use ISO 8601 (e.g., 2025-11-30T23:59:59)",
+                    "code": 400
+                }), 400
+
+        # Filter by exact coordinates if both lat and long are provided
+        if lat_str and long_str:
+            location_filter = f"lat={lat_str},long={long_str}"
+            query = query.filter(Observation.coordinates == location_filter)
+        elif lat_str or long_str:
             return jsonify({
-                "error": "Invalid start_date format. Use ISO 8601 (e.g., 2025-11-01T00:00:00)",
+                "error": "Both 'lat' and 'long' parameters are required for location filtering",
                 "code": 400
             }), 400
 
-    # Filter by end date if provided
-    if end_date_str:
-        try:
-            end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
-            query = query.filter(Observation.timestamp <= end_date)
-        except ValueError:
+        # Execute the query and serialize results to JSON
+        results = query.all()
+        return jsonify(observations_schema.dump(results)), 200
+    
+    elif request.method == 'POST':
+        # POST logic for creating observation
+        data = request.get_json()
+        
+        if not data:
             return jsonify({
-                "error": "Invalid end_date format. Use ISO 8601 (e.g., 2025-11-30T23:59:59)",
+                "error": "Empty request body or missing required fields",
                 "code": 400
             }), 400
-
-    # Filter by exact coordinates if both lat and long are provided
-    if lat_str and long_str:
-        location_filter = f"lat={lat_str},long={long_str}"
-        query = query.filter(Observation.coordinates == location_filter)
-    elif lat_str or long_str:
-        # If only one of lat/long is provided, return an error
-        return jsonify({
-            "error": "Both 'lat' and 'long' parameters are required for location filtering",
-            "code": 400
-        }), 400
-
-    # Execute the query and serialize results to JSON
-    results = query.all()
-    return jsonify(observations_schema.dump(results)), 200
+        
+        # Define required fields
+        required_fields = ['timestamp', 'timezone', 'coordinates', 'satellite_id', 'spectral_indices']
+        
+        # Check for missing fields
+        missing_fields = []
+        for field in required_fields:
+            if field not in data:
+                missing_fields.append(field)
+            elif data[field] is None:
+                missing_fields.append(field)
+            elif isinstance(data[field], str) and not data[field].strip():
+                missing_fields.append(field)
+        
+        if missing_fields:
+            if len(missing_fields) == 1:
+                error_msg = f"Missing required field: {missing_fields[0]}"
+            else:
+                error_msg = f"Missing required fields: {', '.join(missing_fields)}"
+            
+            return jsonify({
+                "error": error_msg,
+                "code": 400
+            }), 400
+        
+        # Validate timestamp format
+        try:
+            timestamp = datetime.fromisoformat(data['timestamp'].replace('Z', '+00:00'))
+        except (ValueError, AttributeError):
+            return jsonify({
+                "error": "Invalid timestamp format. Expected ISO 8601 (YYYY-MM-DDTHH:MM:SS)",
+                "code": 400
+            }), 400
+        
+        # Validate spectral_indices
+        if not isinstance(data['spectral_indices'], dict):
+            return jsonify({
+                "error": "spectral_indices must be a JSON object",
+                "code": 400
+            }), 400
+        
+        try:
+            # Create new observation
+            new_observation = Observation(
+                timestamp=timestamp,
+                timezone=data['timezone'],
+                coordinates=data['coordinates'],
+                satellite_id=data['satellite_id'],
+                spectral_indices=json.dumps(data['spectral_indices']),
+                notes=data.get('notes')
+            )
+            
+            db.session.add(new_observation)
+            db.session.commit()
+            
+            return jsonify({
+                "message": "Observation created successfully",
+                "observation": observation_schema.dump(new_observation)
+            }), 201
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                "error": f"Failed to create observation: {str(e)}",
+                "code": 500
+            }), 500
 
 
 # US-12: Bulk create observations
