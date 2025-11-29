@@ -2,7 +2,6 @@ from flask import Flask, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import json
 import re
-
 import datetime
 import jwt
 from functools import wraps
