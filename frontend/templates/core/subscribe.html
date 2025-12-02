@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Subscribe to {{ product.name }} - TerraScope{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="card-title">Subscribe to {{ product.name }}</h1>
+                    <p class="card-text">{{ product.description }}</p>
+                    <p class="h4 text-primary mb-4">Price: ${{ product.price }}</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="alert alert-info">
+                            <strong>Note:</strong> By clicking "Buy Now", you'll be subscribed to this product.
+                        </div>
+                        <button type="submit" class="btn btn-success btn-lg w-100">Buy Now</button>
+                    </form>
+                    
+                    <hr class="my-3">
+                    <a href="{% url 'product_detail' product.pk %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
