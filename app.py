@@ -514,6 +514,62 @@ def delete_item(item_id):
         "id": item_id,
         "details": "Item deleted (dummy)"
     }), 200
+    
+# US-10: POST /observations - Store geospatial observation data
+@app.post("/observations")
+@jwt_required()  # US-13: Protect with JWT (same as GET)
+def create_observation():
+    # US-10: Parse JSON payload
+    data = request.get_json()
+    if not data:
+        return jsonify({
+            "error": "No JSON payload provided",
+            "code": 400
+        }), 400
+
+    try:
+        # US-10: Extract and validate timestamp (required field)
+        timestamp_str = data.get('timestamp')
+        if not timestamp_str:
+            return jsonify({
+                "error": "Validation failed",
+                "message": "Missing or invalid required fields",
+                "details": {"timestamp": ["Missing data for required field."]},
+                "code": 400
+            }), 400
+
+        # Parse timestamp to datetime object (ISO 8601)
+        try:
+            timestamp_dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+        except ValueError:
+            return jsonify({
+                "error": "Invalid timestamp format. Use ISO 8601 (e.g., 2025-11-27T12:00:00)",
+                "code": 400
+            }), 400
+
+        # Create new Observation instance
+        new_observation = Observation(
+            timestamp=timestamp_dt,
+            timezone=data.get('timezone'),
+            coordinates=data.get('coordinates'),  # e.g., "lat=40.7,long=-74.0"
+            satellite_id=data.get('satellite_id'),
+            spectral_indices=data.get('spectral_indices'),  # e.g., JSON string like '{"ndvi": 0.5}'
+            notes=data.get('notes')
+        )
+
+        # Persist to DB
+        db.session.add(new_observation)
+        db.session.commit()
+
+        # US-10: Return persisted data as JSON with ISO timestamp (schema handles serialization)
+        return jsonify(observation_schema.dump(new_observation)), 201  # 201 Created
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "Failed to store observation",
+            "code": 500
+        }), 500
 
 
 # US-11: PUT /observations/<id> - Full update (protected from historical edits)
