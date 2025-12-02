@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ product.name }} - TerraScope{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-6">
+            {% if product.image %}
+            <img src="{{ product.image }}" class="img-fluid rounded" alt="{{ product.name }}">
+            {% else %}
+            <div class="bg-secondary text-white text-center py-5 rounded">
+                <h3>No Image Available</h3>
+            </div>
+            {% endif %}
+        </div>
+        <div class="col-md-6">
+            <h1>{{ product.name }}</h1>
+            <p class="lead">{{ product.description }}</p>
+            <h3 class="text-primary mb-4">${{ product.price }}</h3>
+            
+            {% if user.is_authenticated %}
+            <form method="post" action="{% url 'subscribe' product.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-lg">Subscribe Now</button>
+            </form>
+            {% else %}
+            <div class="alert alert-warning">
+                <p>Please <a href="/admin/login/?next={{ request.path }}">login</a> to subscribe to this product.</p>
+            </div>
+            {% endif %}
+            
+            <hr class="my-4">
+            <a href="{% url 'product_list' %}" class="btn btn-secondary">← Back to Products</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

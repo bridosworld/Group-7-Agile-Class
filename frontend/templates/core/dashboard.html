@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>Your Subscriptions</h1>
+    
+    {% if subs %}
+    <ul class="list-group mb-4">
+        {% for sub in subs %}
+        <li class="list-group-item">
+            <strong>{{ sub.product.name }}</strong> - 
+            <span class="badge bg-{% if sub.status == 'active' %}success{% elif sub.status == 'pending' %}warning{% else %}secondary{% endif %}">
+                {{ sub.status }}
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted">No subscriptions yet.</p>
+    <a href="{% url 'product_list' %}" class="btn btn-primary">Browse Products</a>
+    {% endif %}
+    
+    <h2>Metrics Chart</h2>
+    <canvas id="chart" width="400" height="200"></canvas>
+</div>
+
+<!-- Store metrics data in a hidden script tag -->
+{{ metrics|json_script:"metrics-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('chart').getContext('2d');
+    
+    // Parse JSON from script tag (safer method)
+    const metricsData = JSON.parse(document.getElementById('metrics-data').textContent);
+    const labels = Object.keys(metricsData);
+    const values = Object.values(metricsData);
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Observation Count',
+                data: values,
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

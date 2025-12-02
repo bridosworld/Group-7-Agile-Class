@@ -1,0 +1,164 @@
+# TerraScope Frontend - Django Web Application
+
+A Django-based web interface for the TerraScope geospatial data management system.
+
+## 🛠 Technology Stack
+
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| **Web Framework** | Django | 4.x+ |
+| **Database** | SQLite | 3.x |
+| **Frontend** | HTML5, CSS3, JavaScript | - |
+| **Charts** | Chart.js | 3.x+ |
+| **Template Engine** | Django Templates | Built-in |
+| **Static Files** | Django Static Files | Built-in |
+
+---
+
+## 📁 Project Structure
+
+```
+frontend/
+├── manage.py                # Django management script
+├── db.sqlite3               # SQLite database (auto-created)
+│
+├── terrascope/              # Main project configuration
+│   ├── __init__.py
+│   ├── settings.py          # Project settings
+│   ├── urls.py             # Main URL configuration
+│   ├── wsgi.py             # WSGI application
+│   ├── asgi.py             # ASGI application
+│   └── __pycache__/
+│
+├── core/                    # Main application
+│   ├── __init__.py
+│   ├── admin.py            # Admin interface configuration
+│   ├── apps.py             # App configuration
+│   ├── models.py           # Database models
+│   ├── views.py            # View functions
+│   ├── urls.py             # App-specific URL patterns
+│   ├── tests.py            # Unit tests
+│   ├── migrations/         # Database migrations
+│   │   └── __init__.py
+│   └── __pycache__/
+│
+└── templates/              # HTML templates
+    ├── base.html           # Base template
+    └── core/              # App-specific templates
+        ├── dashboard.html  # Dashboard page
+        ├── login.html      # Login page
+        └── ...            # Other templates
+```
+
+---
+
+##Installation & Setup
+
+### Prerequisites
+
+- **Python 3.8+** installed on your system
+- **pip** package manager
+- **Git** git pull origin main
+
+### Step 1: Navigate to Frontend Directory
+
+```bash
+cd Group-7-Agile-Class/frontend
+```
+
+### Step 2: Create Virtual Environment (Optional but Recommended)
+
+**Windows (Git Bash):**
+```bash
+python -m venv venv
+source venv/Scripts/activate
+```
+
+**Windows (Command Prompt):**
+```cmd
+python -m venv venv
+venv\Scripts\activate
+```
+
+**macOS/Linux:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### Step 3: Install Django and Dependencies
+
+```bash
+pip install django requests django-crispy-forms crispy-bootstrap5
+```
+
+**For Chart.js visualization (included via CDN in templates):**
+- No additional installation needed
+- Chart.js loaded from: `https://cdn.jsdelivr.net/npm/chart.js`
+
+---
+
+## ▶️ Running the Application
+
+### Step 1: Apply Database Migrations
+
+```bash
+python manage.py migrate
+```
+
+**Expected Output:**
+```
+Operations to perform:
+  Apply all migrations: admin, auth, contenttypes, sessions, core
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  ...
+```
+
+### Step 2: Create Superuser (Optional - for Admin Panel)
+
+```bash
+python manage.py createsuperuser
+```
+
+**Follow the prompts:**
+```
+Username: admin
+Email address: admin@example.com
+Password: ********
+Password (again): ********
+Superuser created successfully.
+```
+
+### Step 3: Run Development Server
+
+```bash
+python manage.py runserver
+```
+
+**Expected Output:**
+```
+Watching for file changes with StatReloader
+Performing system checks...
+
+System check identified no issues (0 silenced).
+December 15, 2024 - 10:00:00
+Django version 4.2.7, using settings 'terrascope.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.
+```
+
+### Step 4: Access the Application
+
+**Main Application:**
+```
+http://127.0.0.1:8000/
+```
+
+**Admin Panel:**
+```
+http://127.0.0.1:8000/admin/
+```
+
+---
