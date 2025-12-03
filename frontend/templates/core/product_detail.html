@@ -1,37 +1,70 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block title %}{{ product.name }} - TerraScope{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-md-6">
-            {% if product.image %}
-            <img src="{{ product.image }}" class="img-fluid rounded" alt="{{ product.name }}">
-            {% else %}
-            <div class="bg-secondary text-white text-center py-5 rounded">
-                <h3>No Image Available</h3>
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="ts-card p-4">
+            <span class="ts-pill mb-2">
+                <span class="dot"></span>
+                Product Overview
+            </span>
+            <h1 class="h4 text-light mb-2">{{ product.name }}</h1>
+
+            <p class="ts-muted mb-3">
+                {{ product.description }}
+            </p>
+
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div>
+                    <div class="ts-kpi">£{{ product.price }}</div>
+                    <div class="ts-kpi-label">Subscription price</div>
+                </div>
+                <span class="ts-tag ts-tag--accent">
+                    TerraScope subscription
+                </span>
             </div>
+
+            {% if user.is_authenticated %}
+                <form method="post" action="{% url 'subscribe' product.pk %}" class="d-flex flex-wrap gap-2">
+                    {% csrf_token %}
+                    <button type="submit" class="ts-gradient-btn">
+                        Subscribe now
+                    </button>
+                    <a href="{% url 'home' %}"
+                       class="btn btn-sm btn-outline-light rounded-pill">
+                        Back to catalogue
+                    </a>
+                </form>
+            {% else %}
+                <div class="alert alert-warning ts-card-soft mt-3 mb-3">
+                    Please sign in to subscribe to this product.
+                </div>
+                <a href="{% url 'login' %}?next={% url 'product_detail' product.pk %}"
+                   class="ts-gradient-btn">
+                    Sign in to continue
+                </a>
             {% endif %}
         </div>
-        <div class="col-md-6">
-            <h1>{{ product.name }}</h1>
-            <p class="lead">{{ product.description }}</p>
-            <h3 class="text-primary mb-4">${{ product.price }}</h3>
-            
-            {% if user.is_authenticated %}
-            <form method="post" action="{% url 'subscribe' product.pk %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-success btn-lg">Subscribe Now</button>
-            </form>
-            {% else %}
-            <div class="alert alert-warning">
-                <p>Please <a href="/admin/login/?next={{ request.path }}">login</a> to subscribe to this product.</p>
-            </div>
-            {% endif %}
-            
-            <hr class="my-4">
-            <a href="{% url 'product_list' %}" class="btn btn-secondary">← Back to Products</a>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="ts-card-soft p-3 mb-3">
+            <h2 class="h6 text-light mb-2">What you get</h2>
+            <ul class="ts-muted small mb-0">
+                <li>Access to TerraScope observation metrics.</li>
+                <li>Dashboard integration with the Flask API.</li>
+                <li>JWT-secured data access through the backend.</li>
+            </ul>
+        </div>
+
+        <div class="ts-card-soft p-3">
+            <h2 class="h6 text-light mb-2">Helpful hint</h2>
+            <p class="ts-muted small mb-0">
+                Use this page as evidence for the “product as subscription”
+                user story in your sprint documentation.
+            </p>
         </div>
     </div>
 </div>
