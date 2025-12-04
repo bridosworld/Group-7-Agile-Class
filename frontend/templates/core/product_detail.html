@@ -1,70 +1,101 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 
 {% block title %}{{ product.name }} - TerraScope{% endblock %}
 
 {% block content %}
-<div class="row g-4">
-    <div class="col-lg-7">
-        <div class="ts-card p-4">
-            <span class="ts-pill mb-2">
-                <span class="dot"></span>
-                Product Overview
-            </span>
-            <h1 class="h4 text-light mb-2">{{ product.name }}</h1>
-
-            <p class="ts-muted mb-3">
-                {{ product.description }}
-            </p>
-
-            <div class="d-flex align-items-center gap-3 mb-4">
-                <div>
-                    <div class="ts-kpi">£{{ product.price }}</div>
-                    <div class="ts-kpi-label">Subscription price</div>
-                </div>
-                <span class="ts-tag ts-tag--accent">
-                    TerraScope subscription
-                </span>
-            </div>
-
-            {% if user.is_authenticated %}
-                <form method="post" action="{% url 'subscribe' product.pk %}" class="d-flex flex-wrap gap-2">
-                    {% csrf_token %}
-                    <button type="submit" class="ts-gradient-btn">
-                        Subscribe now
-                    </button>
-                    <a href="{% url 'home' %}"
-                       class="btn btn-sm btn-outline-light rounded-pill">
-                        Back to catalogue
-                    </a>
-                </form>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            {% if product.image %}
+            <img src="{{ product.image.url }}" class="img-fluid rounded shadow" alt="{{ product.name }}">
             {% else %}
-                <div class="alert alert-warning ts-card-soft mt-3 mb-3">
-                    Please sign in to subscribe to this product.
-                </div>
-                <a href="{% url 'login' %}?next={% url 'product_detail' product.pk %}"
-                   class="ts-gradient-btn">
-                    Sign in to continue
-                </a>
+            <div class="bg-secondary text-white text-center d-flex align-items-center justify-content-center rounded shadow" style="height: 400px;">
+                <span class="fs-4">No Image Available</span>
+            </div>
             {% endif %}
         </div>
-    </div>
-
-    <div class="col-lg-5">
-        <div class="ts-card-soft p-3 mb-3">
-            <h2 class="h6 text-light mb-2">What you get</h2>
-            <ul class="ts-muted small mb-0">
-                <li>Access to TerraScope observation metrics.</li>
-                <li>Dashboard integration with the Flask API.</li>
-                <li>JWT-secured data access through the backend.</li>
-            </ul>
-        </div>
-
-        <div class="ts-card-soft p-3">
-            <h2 class="h6 text-light mb-2">Helpful hint</h2>
-            <p class="ts-muted small mb-0">
-                Use this page as evidence for the “product as subscription”
-                user story in your sprint documentation.
-            </p>
+        
+        <div class="col-md-6">
+            <h1 class="mb-3">{{ product.name }}</h1>
+            <p class="lead">{{ product.description }}</p>
+            <h3 class="text-primary mb-4">${{ product.price }}/month</h3>
+            
+            {% if user.is_authenticated %}
+                {% if existing_subscription %}
+                    <div class="alert alert-{% if existing_subscription.status == 'active' %}success{% elif existing_subscription.status == 'pending' %}warning{% else %}danger{% endif %} shadow-sm">
+                        <h5 class="mb-3">
+                            Subscription Status: 
+                            <span class="badge bg-{% if existing_subscription.status == 'active' %}success{% elif existing_subscription.status == 'pending' %}warning{% else %}danger{% endif %}">
+                                {{ existing_subscription.get_status_display }}
+                            </span>
+                        </h5>
+                        <p><strong>Duration:</strong> {{ existing_subscription.get_duration_months_display }}</p>
+                        <p><strong>Subscribed:</strong> {{ existing_subscription.subscribed_at|date:"M d, Y" }}</p>
+                        {% if existing_subscription.expires_at %}
+                        <p><strong>Expires:</strong> {{ existing_subscription.expires_at|date:"M d, Y" }}</p>
+                        {% if existing_subscription.status == 'active' %}
+                        <p><strong>Days Remaining:</strong> 
+                            <span class="badge bg-{% if existing_subscription.days_remaining > 7 %}success{% elif existing_subscription.days_remaining > 3 %}warning{% else %}danger{% endif %}">
+                                {{ existing_subscription.days_remaining }} days
+                            </span>
+                        </p>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="card shadow">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Choose Subscription Duration</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" action="{% url 'subscribe_product' product.pk %}">
+                                {% csrf_token %}
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Select Duration:</label>
+                                    
+                                    {% for value, label in duration_choices %}
+                                    <div class="form-check mb-2 p-3 border rounded {% if forloop.first %}border-primary{% endif %}">
+                                        <input class="form-check-input" type="radio" name="duration" id="duration{{ value }}" value="{{ value }}" {% if forloop.first %}checked{% endif %}>
+                                        <label class="form-check-label w-100" for="duration{{ value }}">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <strong>{{ label }}</strong>
+                                                <span class="text-muted">
+                                                    {% if value == 1 %}
+                                                        ${{ product.price }}
+                                                    {% elif value == 2 %}
+                                                        ${% widthratio product.price 1 2 %}
+                                                        <span class="badge bg-success ms-2">Save 5%</span>
+                                                    {% elif value == 12 %}
+                                                        ${% widthratio product.price 1 12 %}
+                                                        <span class="badge bg-success ms-2">Save 20%</span>
+                                                    {% endif %}
+                                                </span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                    <i class="bi bi-cart-check"></i> Subscribe Now
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-warning shadow-sm">
+                    <p class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        Please <a href="{% url 'login' %}?next={{ request.path }}" class="alert-link">login</a> to subscribe to this product.
+                    </p>
+                </div>
+            {% endif %}
+            
+            <a href="{% url 'product_list' %}" class="btn btn-outline-secondary mt-3">
+                <i class="bi bi-arrow-left"></i> Back to Products
+            </a>
         </div>
     </div>
 </div>
