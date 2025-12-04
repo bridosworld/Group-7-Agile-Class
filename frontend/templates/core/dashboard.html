@@ -1,102 +1,765 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
 
-{% block title %}Dashboard - TerraScope Console{% endblock %}
+{% block title %}Dashboard - TerraScope{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --card-bg: rgba(30, 41, 59, 0.6);
+        --card-border: rgba(255, 255, 255, 0.1);
+        --text-light: #f1f5f9;
+        --text-muted: #94a3b8;
+        --primary-blue: #3b82f6;
+        --secondary-blue: #2563eb;
+        --success-green: #10b981;
+        --warning-orange: #f59e0b;
+        --danger-red: #ef4444;
+    }
+
+    .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .dashboard-header {
+        margin-bottom: 2rem;
+    }
+
+    .dashboard-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .dashboard-subtitle {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+    }
+
+    /* Stats Cards Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+
+    .stat-card {
+        background: var(--card-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary-blue), var(--secondary-blue));
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary-blue);
+        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+    }
+
+    .stat-card:hover::before {
+        opacity: 1;
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .stat-icon.blue {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.2));
+        color: var(--primary-blue);
+    }
+
+    .stat-icon.green {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2));
+        color: var(--success-green);
+    }
+
+    .stat-icon.orange {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.2));
+        color: var(--warning-orange);
+    }
+
+    .stat-icon.purple {
+        background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(147, 51, 234, 0.2));
+        color: #a855f7;
+    }
+
+    .stat-label {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--text-light);
+        line-height: 1;
+    }
+
+    /* Charts Section */
+    .charts-section {
+        margin-bottom: 3rem;
+    }
+
+    .section-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--text-light);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .section-title i {
+        color: var(--primary-blue);
+    }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .chart-card {
+        background: var(--card-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--card-border);
+        border-radius: 20px;
+        padding: 2rem;
+    }
+
+    .chart-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .chart-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text-light);
+        margin-bottom: 0.5rem;
+    }
+
+    .chart-subtitle {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+
+    /* Subscriptions Table */
+    .subscriptions-section {
+        margin-bottom: 3rem;
+    }
+
+    .subscriptions-table {
+        background: var(--card-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--card-border);
+        border-radius: 20px;
+        overflow: hidden;
+    }
+
+    .table-header {
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--card-border);
+    }
+
+    .table-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text-light);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .table-content {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    thead {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    th {
+        padding: 1rem 2rem;
+        text-align: left;
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    tbody tr {
+        border-bottom: 1px solid var(--card-border);
+        transition: background 0.2s ease;
+    }
+
+    tbody tr:hover {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    td {
+        padding: 1.25rem 2rem;
+        color: var(--text-light);
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-badge.active {
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--success-green);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-badge.paused {
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--warning-orange);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .status-badge.cancelled {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger-red);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .status-badge.expired {
+        background: rgba(148, 163, 184, 0.1);
+        color: var(--text-muted);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    .action-btn {
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+    }
+
+    .no-subscriptions {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+    }
+
+    .no-subscriptions i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .no-subscriptions p {
+        font-size: 1.1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .browse-products-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+        color: white;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+
+    .browse-products-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+    }
+
+    /* Progress Bar */
+    .usage-progress {
+        margin-top: 0.75rem;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-blue), var(--secondary-blue));
+        border-radius: 10px;
+        transition: width 0.5s ease;
+    }
+
+    .progress-text {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 1rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .table-content {
+            overflow-x: scroll;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <div>
-        <span class="ts-pill mb-1">
-            <span class="dot"></span>
-            Subscriber Dashboard
-        </span>
-        <h1 class="h4 text-light mb-0">Welcome back, {{ user.username }}</h1>
-        <p class="ts-muted mb-0">
-            Overview of your active TerraScope subscriptions and observation metrics.
-        </p>
+<div class="dashboard-container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">
+            <i class="bi bi-speedometer2"></i>
+            Dashboard
+        </h1>
+        <p class="dashboard-subtitle">Welcome back! Here's your subscription overview and usage analytics.</p>
     </div>
-</div>
 
-<div class="row g-4 mt-1">
-    <!-- Subscriptions card -->
-    <div class="col-lg-6">
-        <div class="ts-card-soft p-3 p-md-4 h-100">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h2 class="h6 text-light mb-0">Your subscriptions</h2>
-                <span class="ts-tag">
-                    {{ subs|length }} total
-                </span>
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <!-- Total Spent -->
+        <div class="stat-card">
+            <div class="stat-icon blue">
+                <i class="bi bi-currency-pound"></i>
             </div>
+            <div class="stat-label">Total Spent</div>
+            <div class="stat-value">£{{ total_spent|floatformat:2 }}</div>
+        </div>
 
-            {% if subs %}
-                <ul class="list-unstyled mt-3 mb-0">
-                    {% for sub in subs %}
-                        <li class="mb-2">
-                            <div class="d-flex justify-content-between align-items-center ts-metric-row">
-                                <div>
-                                    <div class="fw-semibold text-light">
-                                        {{ sub.product.name }}
-                                    </div>
-                                    <div class="ts-muted small">
-                                        Subscribed on {{ sub.subscribed_at|date:"Y-m-d H:i" }}
-                                    </div>
-                                </div>
-                                <div>
-                                    {% if sub.status == 'active' %}
-                                        <span class="ts-badge-sub bg-sub-active">Active</span>
-                                    {% elif sub.status == 'pending' %}
-                                        <span class="ts-badge-sub bg-sub-pending">Pending</span>
-                                    {% else %}
-                                        <span class="ts-badge-sub bg-sub-expired">Expired</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="ts-empty mt-3 mb-1">
-                    You don’t have any subscriptions yet.
-                </p>
-                <a href="{% url 'home' %}" class="btn btn-sm btn-outline-light rounded-pill mt-2">
-                    Browse products
-                </a>
-            {% endif %}
+        <!-- Active Subscriptions -->
+        <div class="stat-card">
+            <div class="stat-icon green">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div class="stat-label">Active Subscriptions</div>
+            <div class="stat-value">{{ active_subscriptions }}</div>
+        </div>
+
+        <!-- Total API Calls -->
+        <div class="stat-card">
+            <div class="stat-icon orange">
+                <i class="bi bi-lightning-charge"></i>
+            </div>
+            <div class="stat-label">Total API Calls</div>
+            <div class="stat-value">{{ total_api_calls|intcomma }}</div>
+        </div>
+
+        <!-- Data Used -->
+        <div class="stat-card">
+            <div class="stat-icon purple">
+                <i class="bi bi-database"></i>
+            </div>
+            <div class="stat-label">Data Used</div>
+            <div class="stat-value">{{ total_data_used|floatformat:2 }} MB</div>
         </div>
     </div>
 
-    <!-- Metrics card -->
-    <div class="col-lg-6">
-        <div class="ts-card p-3 p-md-4 h-100">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h2 class="h6 text-light mb-0">Observation metrics</h2>
-                <span class="ts-tag ts-tag--accent">
-                    Flask API /observations
-                </span>
-            </div>
+    <!-- Charts Section -->
+    <div class="charts-section">
+        <h2 class="section-title">
+            <i class="bi bi-graph-up"></i>
+            Usage Analytics
+        </h2>
 
-            {% if metrics %}
-                <div class="mt-3">
-                    {% for satellite, count in metrics.items %}
-                        <div class="ts-metric-row">
-                            <div class="ts-metric-name">
-                                {{ satellite }}
-                            </div>
-                            <div class="ts-metric-count">
-                                {{ count }}
-                            </div>
-                        </div>
-                    {% endfor %}
+        <div class="charts-grid">
+            <!-- API Calls Trend -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">API Calls Trend</h3>
+                    <p class="chart-subtitle">Daily API usage over the last 30 days</p>
                 </div>
-            {% else %}
-                <p class="ts-empty mt-3 mb-1">
-                    No metrics available — this usually means the API returned an empty list
-                    or the JWT token is missing.
-                </p>
-                <p class="ts-muted small mb-0">
-                    Use Postman or your test scripts to insert some observations, then refresh.
-                </p>
-            {% endif %}
+                <div class="chart-container">
+                    <canvas id="apiCallsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Data Usage -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Data Usage</h3>
+                    <p class="chart-subtitle">Data downloaded in MB over the last 30 days</p>
+                </div>
+                <div class="chart-container">
+                    <canvas id="dataUsageChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Success Rate -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Success Rate</h3>
+                    <p class="chart-subtitle">API request success percentage</p>
+                </div>
+                <div class="chart-container">
+                    <canvas id="successRateChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscriptions Table -->
+    <div class="subscriptions-section">
+        <h2 class="section-title">
+            <i class="bi bi-list-check"></i>
+            My Subscriptions
+        </h2>
+
+        <div class="subscriptions-table">
+            <div class="table-header">
+                <h3 class="table-title">
+                    <i class="bi bi-box"></i>
+                    Active Products
+                </h3>
+            </div>
+
+            <div class="table-content">
+                {% if subscriptions %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Status</th>
+                            <th>Expires</th>
+                            <th>API Calls</th>
+                            <th>Data Used</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subscription in subscriptions %}
+                        <tr>
+                            <td>
+                                <strong>{{ subscription.product.name }}</strong>
+                            </td>
+                            <td>
+                                <span class="status-badge {{ subscription.status }}">
+                                    {% if subscription.status == 'active' %}
+                                        <i class="bi bi-check-circle-fill"></i>
+                                    {% elif subscription.status == 'paused' %}
+                                        <i class="bi bi-pause-circle-fill"></i>
+                                    {% elif subscription.status == 'cancelled' %}
+                                        <i class="bi bi-x-circle-fill"></i>
+                                    {% else %}
+                                        <i class="bi bi-clock-fill"></i>
+                                    {% endif %}
+                                    {{ subscription.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {{ subscription.expires_at|date:"M d, Y" }}
+                                {% if subscription.days_until_expiry > 0 %}
+                                    <br><small style="color: var(--text-muted);">{{ subscription.days_until_expiry }} days left</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ subscription.api_calls_made|intcomma }} / {{ subscription.api_calls_limit|intcomma }}
+                                <div class="usage-progress">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: {% widthratio subscription.api_calls_made subscription.api_calls_limit 100 %}%;"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {{ subscription.data_downloaded_mb|floatformat:2 }} / {{ subscription.data_limit_mb }} MB
+                                <div class="usage-progress">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: {% widthratio subscription.data_downloaded_mb subscription.data_limit_mb 100 %}%;"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <a href="{% url 'subscription_detail' subscription.pk %}" class="action-btn">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="no-subscriptions">
+                    <i class="bi bi-inbox"></i>
+                    <p>You don't have any active subscriptions yet.</p>
+                    <a href="{% url 'product_list' %}" class="browse-products-btn">
+                        <i class="bi bi-grid"></i>
+                        Browse Products
+                    </a>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Chart.js Configuration
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+
+    // API Calls Chart
+    const apiCallsCtx = document.getElementById('apiCallsChart');
+    if (apiCallsCtx) {
+        new Chart(apiCallsCtx, {
+            type: 'line',
+            data: {
+                labels: {{ chart_labels|safe }},
+                datasets: [{
+                    label: 'API Calls',
+                    data: {{ api_calls_data|safe }},
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#3b82f6',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                        padding: 12,
+                        borderColor: 'rgba(59, 130, 246, 0.5)',
+                        borderWidth: 1,
+                        titleColor: '#f1f5f9',
+                        bodyColor: '#94a3b8',
+                        displayColors: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Data Usage Chart
+    const dataUsageCtx = document.getElementById('dataUsageChart');
+    if (dataUsageCtx) {
+        new Chart(dataUsageCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ chart_labels|safe }},
+                datasets: [{
+                    label: 'Data (MB)',
+                    data: {{ data_usage_data|safe }},
+                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                    borderColor: '#10b981',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                        padding: 12,
+                        borderColor: 'rgba(16, 185, 129, 0.5)',
+                        borderWidth: 1,
+                        titleColor: '#f1f5f9',
+                        bodyColor: '#94a3b8',
+                        displayColors: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Success Rate Chart
+    const successRateCtx = document.getElementById('successRateChart');
+    if (successRateCtx) {
+        new Chart(successRateCtx, {
+            type: 'line',
+            data: {
+                labels: {{ chart_labels|safe }},
+                datasets: [{
+                    label: 'Success Rate %',
+                    data: {{ success_rate_data|safe }},
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#10b981',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                        padding: 12,
+                        borderColor: 'rgba(16, 185, 129, 0.5)',
+                        borderWidth: 1,
+                        titleColor: '#f1f5f9',
+                        bodyColor: '#94a3b8',
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
 {% endblock %}

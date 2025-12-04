@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Login - TerraScope Console{% endblock %}
+{% block title %}Register - TerraScope Console{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -31,7 +31,7 @@
     .login-icon {
         width: 80px;
         height: 80px;
-        background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         border-radius: 20px;
         display: flex;
         align-items: center;
@@ -46,7 +46,7 @@
         font-weight: 800;
         color: var(--text-light);
         margin-bottom: 0.5rem;
-        background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+        background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
         background-clip: text;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -99,9 +99,9 @@
     
     .form-control-custom:focus {
         background: rgba(0, 0, 0, 0.4);
-        border-color: #3b82f6;
+        border-color: #10b981;
         outline: none;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
     }
     
     .form-control-custom::placeholder {
@@ -109,7 +109,7 @@
     }
     
     .btn-login {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         border: none;
         color: white;
         padding: 1rem 2rem;
@@ -127,9 +127,9 @@
     }
     
     .btn-login:hover {
-        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
         transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(37, 99, 235, 0.4);
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
     }
     
     .form-footer {
@@ -139,38 +139,20 @@
         text-align: center;
     }
     
-    .form-links {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 1.5rem;
-    }
-    
-    .form-link {
-        color: #3b82f6;
-        text-decoration: none;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-    }
-    
-    .form-link:hover {
-        color: #2563eb;
-        text-decoration: underline;
-    }
-    
     .signup-prompt {
         color: var(--text-muted);
         font-size: 0.95rem;
     }
     
     .signup-prompt a {
-        color: #10b981;
+        color: #3b82f6;
         text-decoration: none;
         font-weight: 600;
         transition: all 0.3s ease;
     }
     
     .signup-prompt a:hover {
-        color: #059669;
+        color: #2563eb;
         text-decoration: underline;
     }
     
@@ -211,25 +193,42 @@
         gap: 0.5rem;
     }
     
-    .remember-me {
+    .password-requirements {
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-top: 1rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+    
+    .password-requirements h4 {
+        color: var(--text-light);
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        margin-top: 1rem;
     }
     
-    .remember-me input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-        cursor: pointer;
-        accent-color: #3b82f6;
-    }
-    
-    .remember-me label {
-        color: var(--text-muted);
-        font-size: 0.9rem;
-        cursor: pointer;
+    .password-requirements ul {
+        list-style: none;
+        padding: 0;
         margin: 0;
+    }
+    
+    .password-requirements li {
+        padding: 0.25rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .password-requirements li i {
+        color: #3b82f6;
+        font-size: 0.75rem;
     }
     
     .divider {
@@ -289,12 +288,6 @@
         .login-title {
             font-size: 1.75rem;
         }
-        
-        .form-links {
-            flex-direction: column;
-            gap: 1rem;
-            align-items: center;
-        }
     }
 </style>
 {% endblock %}
@@ -305,10 +298,10 @@
         <!-- Header -->
         <div class="login-header">
             <div class="login-icon">
-                <i class="bi bi-shield-lock"></i>
+                <i class="bi bi-person-plus"></i>
             </div>
-            <h1 class="login-title">Welcome Back</h1>
-            <p class="login-subtitle">Sign in to access your TerraScope dashboard</p>
+            <h1 class="login-title">Create Account</h1>
+            <p class="login-subtitle">Join TerraScope and start monitoring your environment</p>
         </div>
 
         <!-- Success Messages -->
@@ -349,7 +342,7 @@
         </div>
         {% endif %}
 
-        <!-- Login Form -->
+        <!-- Register Form -->
         <form method="post">
             {% csrf_token %}
             
@@ -366,7 +359,7 @@
                         name="username" 
                         id="id_username"
                         class="form-control-custom" 
-                        placeholder="Enter your username"
+                        placeholder="Choose a unique username"
                         required
                         autofocus
                         value="{{ form.username.value|default:'' }}"
@@ -376,7 +369,7 @@
 
             <!-- Password Field -->
             <div class="form-group">
-                <label for="id_password" class="form-label">
+                <label for="id_password1" class="form-label">
                     <i class="bi bi-lock"></i>
                     Password
                 </label>
@@ -384,37 +377,66 @@
                     <i class="bi bi-key-fill input-icon"></i>
                     <input 
                         type="password" 
-                        name="password" 
-                        id="id_password"
+                        name="password1" 
+                        id="id_password1"
                         class="form-control-custom" 
-                        placeholder="Enter your password"
+                        placeholder="Create a strong password"
                         required
                     >
                 </div>
             </div>
 
-            <!-- Remember Me -->
-            <div class="remember-me">
-                <input type="checkbox" id="remember" name="remember">
-                <label for="remember">Remember me for 30 days</label>
+            <!-- Confirm Password Field -->
+            <div class="form-group">
+                <label for="id_password2" class="form-label">
+                    <i class="bi bi-lock-fill"></i>
+                    Confirm Password
+                </label>
+                <div class="input-group-custom">
+                    <i class="bi bi-shield-check input-icon"></i>
+                    <input 
+                        type="password" 
+                        name="password2" 
+                        id="id_password2"
+                        class="form-control-custom" 
+                        placeholder="Re-enter your password"
+                        required
+                    >
+                </div>
+            </div>
+
+            <!-- Password Requirements -->
+            <div class="password-requirements">
+                <h4>
+                    <i class="bi bi-info-circle"></i>
+                    Password Requirements
+                </h4>
+                <ul>
+                    <li>
+                        <i class="bi bi-check-circle-fill"></i>
+                        At least 8 characters long
+                    </li>
+                    <li>
+                        <i class="bi bi-check-circle-fill"></i>
+                        Cannot be too similar to your username
+                    </li>
+                    <li>
+                        <i class="bi bi-check-circle-fill"></i>
+                        Cannot be a commonly used password
+                    </li>
+                    <li>
+                        <i class="bi bi-check-circle-fill"></i>
+                        Cannot be entirely numeric
+                    </li>
+                </ul>
             </div>
 
             <!-- Submit Button -->
             <button type="submit" class="btn-login">
-                <i class="bi bi-box-arrow-in-right"></i>
-                Sign In
+                <i class="bi bi-person-check"></i>
+                Create Account
             </button>
         </form>
-
-        <!-- Form Links -->
-        <div class="form-links" style="margin-top: 1.5rem;">
-            <a href="#" class="form-link">
-                <i class="bi bi-question-circle"></i> Forgot Password?
-            </a>
-            <a href="#" class="form-link">
-                <i class="bi bi-info-circle"></i> Need Help?
-            </a>
-        </div>
 
         <!-- Divider -->
         <div class="divider">
@@ -436,8 +458,8 @@
         <!-- Footer -->
         <div class="form-footer">
             <p class="signup-prompt">
-                Don't have an account? 
-                <a href="{% url 'register' %}">Create Account</a>
+                Already have an account? 
+                <a href="{% url 'login' %}">Login here</a>
             </p>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 1rem;">
                 <i class="bi bi-shield-check"></i>

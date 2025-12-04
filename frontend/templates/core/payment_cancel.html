@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Cancelled - TerraScope{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cancel-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 0;
+        background: linear-gradient(135deg, rgba(249, 115, 22, 0.05) 0%, rgba(251, 146, 60, 0.05) 100%);
+    }
+    
+    .cancel-card {
+        background: var(--card-bg);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 4rem 3rem;
+        max-width: 600px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    .cancel-icon {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 2rem;
+        font-size: 3rem;
+        color: white;
+    }
+    
+    .cancel-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--text-light);
+        margin-bottom: 1rem;
+    }
+    
+    .cancel-message {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        margin-bottom: 2.5rem;
+        line-height: 1.6;
+    }
+    
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .btn-try-again {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border: none;
+        color: white;
+        padding: 1.25rem 2.5rem;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .btn-try-again:hover {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(37, 99, 235, 0.4);
+        color: white;
+    }
+    
+    .btn-browse {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text-light);
+        padding: 1.25rem 2.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .btn-browse:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
+        color: var(--text-light);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cancel-container">
+    <div class="cancel-card">
+        <div class="cancel-icon">
+            <i class="bi bi-x-circle-fill"></i>
+        </div>
+
+        <h1 class="cancel-title">Payment Cancelled</h1>
+        <p class="cancel-message">
+            Your payment was cancelled. No charges have been made to your account.
+            You can try again anytime or browse other products.
+        </p>
+
+        <div class="button-group">
+            {% if request.GET.product_id %}
+            <a href="{% url 'product_detail' request.GET.product_id %}" class="btn-try-again">
+                <i class="bi bi-arrow-clockwise"></i>
+                Try Again
+            </a>
+            {% endif %}
+            <a href="{% url 'product_list' %}" class="btn-browse">
+                <i class="bi bi-grid"></i>
+                Browse Products
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

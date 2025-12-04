@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Home - TerraScope Console{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Hero Section -->
+    <div class="hero-section" style="padding: 6rem 2rem;">
+        <h1 class="hero-title" style="font-size: 3.5rem;">
+            Real-Time Environmental Monitoring
+        </h1>
+        <p class="hero-subtitle" style="font-size: 1.5rem; max-width: 800px;">
+            Access comprehensive APIs for air quality, pollutants, and atmospheric data. 
+            Trusted by researchers and organizations worldwide.
+        </p>
+        <div class="mt-4">
+            <a href="{% url 'product_list' %}" class="btn btn-view-details" style="width: auto; padding: 1rem 3rem; font-size: 1.1rem; margin-right: 1rem;">
+                <i class="bi bi-grid"></i> Browse Products
+            </a>
+            {% if not user.is_authenticated %}
+            <a href="{% url 'login' %}" class="btn btn-view-details" style="width: auto; padding: 1rem 3rem; font-size: 1.1rem; background: rgba(255,255,255,0.1);">
+                <i class="bi bi-box-arrow-in-right"></i> Get Started
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Featured Products -->
+    {% if products %}
+    <section class="products-section" style="padding: 4rem 2rem; max-width: 1400px; margin: 0 auto;">
+        <div style="text-align: center; margin-bottom: 3rem;">
+            <h2 style="font-size: 2.5rem; font-weight: 800; color: var(--text-light); margin-bottom: 1rem;">
+                Our Products
+            </h2>
+            <p style="color: var(--text-muted); font-size: 1.1rem;">
+                Choose from our range of professional API services
+            </p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem;">
+            {% for product in products %}
+            <div style="background: var(--card-bg); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; padding: 2rem; transition: all 0.3s ease;">
+                {% if product.image %}
+                    <img src="{{ product.image.url }}" alt="{{ product.name }}" style="width: 100%; max-height: 180px; object-fit: cover; border-radius: 12px; margin-bottom: 1.5rem;">
+                {% endif %}
+                
+                <span style="display: inline-block; background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue)); color: white; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; margin-bottom: 1rem;">
+                    <i class="bi bi-lightning-charge"></i> API
+                </span>
+                
+                <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--text-light); margin-bottom: 0.75rem;">
+                    {{ product.name }}
+                </h3>
+                
+                <p style="color: var(--text-muted); line-height: 1.5; margin-bottom: 1.25rem; min-height: 50px; font-size: 0.95rem;">
+                    {{ product.short_description|default:product.description|truncatewords:15 }}
+                </p>
+
+                <!-- PRICE -->
+                <div style="text-align: center; padding: 1.25rem 0; margin: 1.25rem 0; border-top: 1px solid rgba(255, 255, 255, 0.05); border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                    <div style="font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #10b981 0%, #059669 100%); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.3rem;">
+                        £{{ product.price_1_month|floatformat:2 }}
+                    </div>
+                    <div style="color: var(--text-muted); font-size: 0.85rem;">
+                        per month
+                    </div>
+                </div>
+
+                <!-- QUICK FEATURES -->
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">
+                        <i class="bi bi-check-circle-fill" style="color: #10b981;"></i>
+                        <span>{{ product.api_calls_limit|intcomma }} calls</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.85rem;">
+                        <i class="bi bi-check-circle-fill" style="color: #10b981;"></i>
+                        <span>{{ product.data_limit_mb }} MB data</span>
+                    </div>
+                </div>
+
+                <a href="{% url 'product_detail' product.pk %}" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%; padding: 0.9rem; background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%); color: white; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 600; text-decoration: none; transition: all 0.3s ease;">
+                    <span>View Details</span>
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="text-align: center; margin-top: 3rem;">
+            <a href="{% url 'product_list' %}" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 1rem 2rem; background: rgba(255, 255, 255, 0.05); color: var(--text-light); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; font-weight: 600; text-decoration: none; transition: all 0.3s ease;">
+                <span>View All Products</span>
+                <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Features Section -->
+    <div class="stats-section">
+        <div class="row">
+            <div class="col-md-3 col-6 mb-4 mb-md-0">
+                <div class="stat-item">
+                    <i class="bi bi-lightning-charge" style="font-size: 3rem; color: #10b981;"></i>
+                    <div class="stat-label mt-2">Real-Time Data</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-4 mb-md-0">
+                <div class="stat-item">
+                    <i class="bi bi-shield-check" style="font-size: 3rem; color: #10b981;"></i>
+                    <div class="stat-label mt-2">99.9% Uptime</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-item">
+                    <i class="bi bi-graph-up-arrow" style="font-size: 3rem; color: #10b981;"></i>
+                    <div class="stat-label mt-2">Accurate Data</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-item">
+                    <i class="bi bi-headset" style="font-size: 3rem; color: #10b981;"></i>
+                    <div class="stat-label mt-2">24/7 Support</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

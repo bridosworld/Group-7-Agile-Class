@@ -1,0 +1,432 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ subscription.product.name }} - Subscription Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .subscription-detail-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+    }
+
+    .page-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+    }
+
+    .breadcrumb {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .breadcrumb a {
+        color: var(--primary-blue);
+        text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .detail-card {
+        background: var(--card-bg);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 2rem;
+    }
+
+    .card-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-light);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .card-title i {
+        color: var(--primary-blue);
+    }
+
+    .info-grid {
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .info-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .info-label {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .info-label i {
+        color: var(--primary-blue);
+    }
+
+    .info-value {
+        color: var(--text-light);
+        font-weight: 600;
+        font-size: 1.05rem;
+    }
+
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .status-active {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+
+    .status-expired {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+
+    .status-paused {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+
+    .progress-bar-container {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 0.5rem;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-blue), var(--secondary-blue));
+        transition: width 0.3s ease;
+    }
+
+    .usage-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .usage-stat {
+        background: rgba(255, 255, 255, 0.02);
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .usage-stat-label {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .usage-stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-light);
+    }
+
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .btn {
+        padding: 1rem;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-secondary {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-light);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-danger {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-danger:hover {
+        background: rgba(239, 68, 68, 0.2);
+    }
+
+    .chart-section {
+        margin-top: 2rem;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+
+    @media (max-width: 768px) {
+        .detail-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .usage-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="subscription-detail-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="breadcrumb">
+            <a href="{% url 'dashboard' %}"><i class="bi bi-house-door"></i> Dashboard</a>
+            <i class="bi bi-chevron-right"></i>
+            <span>Subscription Details</span>
+        </div>
+        <h1 class="page-title">{{ subscription.product.name }}</h1>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="detail-grid">
+        <!-- Left Column: Subscription Info -->
+        <div>
+            <div class="detail-card">
+                <h2 class="card-title">
+                    <i class="bi bi-info-circle"></i>
+                    Subscription Information
+                </h2>
+                
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">
+                            <i class="bi bi-flag"></i>
+                            Status
+                        </span>
+                        <span class="status-badge status-{{ subscription.status }}">
+                            {{ subscription.get_status_display }}
+                        </span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">
+                            <i class="bi bi-calendar-check"></i>
+                            Start Date
+                        </span>
+                        <span class="info-value">{{ subscription.created_at|date:"F d, Y" }}</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">
+                            <i class="bi bi-calendar-x"></i>
+                            Expiry Date
+                        </span>
+                        <span class="info-value">{{ subscription.expires_at|date:"F d, Y" }}</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">
+                            <i class="bi bi-cash-stack"></i>
+                            Total Cost
+                        </span>
+                        <span class="info-value">£{{ subscription.total_cost|floatformat:2 }}</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">
+                            <i class="bi bi-credit-card"></i>
+                            Payment ID
+                        </span>
+                        <span class="info-value" style="font-size: 0.85rem;">{{ subscription.stripe_payment_intent_id|truncatechars:20 }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage Statistics -->
+            <div class="detail-card" style="margin-top: 2rem;">
+                <h2 class="card-title">
+                    <i class="bi bi-graph-up"></i>
+                    Usage Statistics
+                </h2>
+
+                <!-- API Calls -->
+                <div class="info-item">
+                    <span class="info-label">
+                        <i class="bi bi-lightning"></i>
+                        API Calls
+                    </span>
+                    <span class="info-value">{{ subscription.api_calls_made|intcomma }} / {{ subscription.api_calls_limit|intcomma }}</span>
+                </div>
+                <div class="progress-bar-container">
+                    {% widthratio subscription.api_calls_made subscription.api_calls_limit 100 as api_percentage %}
+                    <div class="progress-bar" style="width: {{ api_percentage|default:0 }}%"></div>
+                </div>
+
+                <!-- Data Usage -->
+                <div class="info-item" style="margin-top: 1.5rem;">
+                    <span class="info-label">
+                        <i class="bi bi-database"></i>
+                        Data Downloaded
+                    </span>
+                    <span class="info-value">{{ subscription.data_downloaded_mb|floatformat:2 }} / {{ subscription.data_limit_mb|floatformat:0 }} MB</span>
+                </div>
+                <div class="progress-bar-container">
+                    {% widthratio subscription.data_downloaded_mb subscription.data_limit_mb 100 as data_percentage %}
+                    <div class="progress-bar" style="width: {{ data_percentage|default:0 }}%"></div>
+                </div>
+
+                <!-- Additional Stats -->
+                <div class="usage-stats">
+                    <div class="usage-stat">
+                        <div class="usage-stat-label">Days Remaining</div>
+                        <div class="usage-stat-value">
+                            {% if subscription.expires_at %}
+                                {{ subscription.expires_at|timeuntil }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="usage-stat">
+                        <div class="usage-stat-label">Daily Average Calls</div>
+                        <div class="usage-stat-value">
+                            {% if subscription.created_at %}
+                                {% with days_active=subscription.expires_at|timesince:subscription.created_at %}
+                                    {{ subscription.api_calls_made|default:0 }}
+                                {% endwith %}
+                            {% else %}
+                                0
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Actions -->
+        <div>
+            <div class="detail-card">
+                <h2 class="card-title">
+                    <i class="bi bi-gear"></i>
+                    Actions
+                </h2>
+                
+                <div class="action-buttons">
+                    <a href="{% url 'dashboard' %}" class="btn btn-primary">
+                        <i class="bi bi-speedometer2"></i>
+                        Back to Dashboard
+                    </a>
+
+                    {% if subscription.status == 'active' %}
+                        <a href="{% url 'pause_subscription' subscription.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-pause-circle"></i>
+                            Pause Subscription
+                        </a>
+                    {% elif subscription.status == 'paused' %}
+                        <a href="{% url 'resume_subscription' subscription.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-play-circle"></i>
+                            Resume Subscription
+                        </a>
+                    {% endif %}
+
+                    {% if subscription.status != 'expired' and subscription.status != 'cancelled' %}
+                        <a href="{% url 'cancel_subscription' subscription.pk %}" class="btn btn-danger">
+                            <i class="bi bi-x-circle"></i>
+                            Cancel Subscription
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Product Info -->
+            <div class="detail-card" style="margin-top: 2rem;">
+                <h2 class="card-title">
+                    <i class="bi bi-box-seam"></i>
+                    Product Details
+                </h2>
+                
+                {% if subscription.product.image %}
+                <img src="{{ subscription.product.image.url }}" alt="{{ subscription.product.name }}" 
+                     style="width: 100%; border-radius: 12px; margin-bottom: 1rem;">
+                {% endif %}
+
+                <p style="color: var(--text-muted); line-height: 1.6;">
+                    {{ subscription.product.description }}
+                </p>
+
+                <a href="{% url 'product_detail' subscription.product.pk %}" class="btn btn-secondary" style="margin-top: 1rem;">
+                    <i class="bi bi-eye"></i>
+                    View Product Page
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
