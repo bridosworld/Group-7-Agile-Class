@@ -12,7 +12,7 @@ from django.contrib.auth import login
 import json
 import stripe
 from django.conf import settings
-from .models import Product, Subscription, SubscriptionUsage
+from .models import Product, Subscription, SubscriptionUsage, UserToken
 
 # Set Stripe API key
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -337,3 +337,88 @@ def register(request):
     else:
         form = UserCreationForm()
     return render(request, 'core/register.html', {'form': form})
+
+@login_required
+def api_tokens(request):
+    """Display user's API tokens"""
+    tokens = UserToken.objects.filter(user=request.user).order_by('-created_at')
+    
+    context = {
+        'tokens': tokens,
+    }
+    
+    return render(request, 'core/api_tokens.html', context)
+
+@login_required
+def generate_token(request):
+    """Generate a new API token"""
+    if request.method == 'POST':
+        token_name = request.POST.get('token_name', '').strip()
+        expiry_days = int(request.POST.get('expiry_days', 365))
+        
+        if not token_name:
+            messages.error(request, 'Token name is required')
+            return redirect('api_tokens')
+        
+        if len(token_name) > 100:
+            messages.error(request, 'Token name must be less than 100 characters')
+            return redirect('api_tokens')
+        
+        # Check if token with same name exists
+        if UserToken.objects.filter(user=request.user, name=token_name, is_active=True).exists():
+            messages.error(request, 'A token with this name already exists')
+            return redirect('api_tokens')
+        
+        try:
+            token, user_token = UserToken.generate_jwt(request.user, token_name, expiry_days)
+            messages.success(request, f'Token "{token_name}" generated successfully!')
+            
+            # Store token in session for display (only shown once)
+            request.session['new_token'] = token
+            request.session['new_token_id'] = user_token.id
+            
+            return redirect('api_tokens')
+        
+        except Exception as e:
+            messages.error(request, f'Error generating token: {str(e)}')
+            return redirect('api_tokens')
+    
+    return redirect('api_tokens')
+
+@login_required
+def revoke_token(request, token_id):
+    """Revoke an API token"""
+    if request.method == 'POST':
+        user_token = get_object_or_404(UserToken, id=token_id, user=request.user)
+        user_token.is_active = False
+        user_token.save()
+        messages.success(request, f'Token "{user_token.name}" has been revoked')
+    
+    return redirect('api_tokens')
+
+@login_required
+def delete_token(request, token_id):
+    """Delete an API token"""
+    if request.method == 'POST':
+        user_token = get_object_or_404(UserToken, id=token_id, user=request.user)
+        token_name = user_token.name
+        user_token.delete()
+        messages.success(request, f'Token "{token_name}" has been deleted')
+    
+    return redirect('api_tokens')
+
+@login_required
+def copy_token(request, token_id):
+    """Copy token to display (AJAX endpoint)"""
+    user_token = get_object_or_404(UserToken, id=token_id, user=request.user)
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': True,
+            'token': user_token.token,
+        })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request'
+    }, status=400)

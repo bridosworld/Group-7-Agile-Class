@@ -1,0 +1,490 @@
+<!-- frontend/templates/core/api_tokens.html -->
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}API Tokens - TerraScope{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tokens-container {
+        max-width: 1000px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .tokens-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .tokens-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #f1f5f9;
+    }
+
+    .btn-generate {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-generate:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+    }
+
+    .token-card {
+        background: rgba(30, 41, 59, 0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .token-card:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+    }
+
+    .token-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1rem;
+    }
+
+    .token-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #f1f5f9;
+    }
+
+    .token-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-revoked {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .token-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .info-label {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.3rem;
+        font-weight: 600;
+    }
+
+    .info-value {
+        font-size: 1rem;
+        color: #f1f5f9;
+    }
+
+    .token-value {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 0.75rem;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        word-break: break-all;
+        font-size: 0.85rem;
+    }
+
+    .token-actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-copy {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-copy:hover {
+        background: #2563eb;
+    }
+
+    .btn-revoke {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-revoke:hover {
+        background: rgba(245, 158, 11, 0.2);
+    }
+
+    .btn-delete {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-delete:hover {
+        background: rgba(239, 68, 68, 0.2);
+    }
+
+    .no-tokens {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: #94a3b8;
+    }
+
+    .no-tokens i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+    }
+
+    .modal-content {
+        background: rgba(30, 41, 59, 0.95);
+        margin: 5rem auto;
+        padding: 2rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        width: 90%;
+        max-width: 500px;
+    }
+
+    .modal-close {
+        color: #94a3b8;
+        float: right;
+        font-size: 2rem;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .modal-close:hover {
+        color: #f1f5f9;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        color: #f1f5f9;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 0.75rem;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: #f1f5f9;
+    }
+
+    .form-group input::placeholder {
+        color: #94a3b8;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        margin-top: 2rem;
+    }
+
+    .btn-submit {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-cancel {
+        background: transparent;
+        color: #94a3b8;
+        padding: 0.75rem 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+
+    .alert-success {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .alert-error {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .new-token-alert {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+
+    .new-token-alert strong {
+        display: block;
+        margin-bottom: 1rem;
+    }
+
+    .new-token-value {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 1rem;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        word-break: break-all;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .new-token-note {
+        font-size: 0.9rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tokens-container">
+    <div class="tokens-header">
+        <h1 class="tokens-title">API Tokens</h1>
+        <button class="btn-generate" onclick="openModal()">+ Generate Token</button>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if new_token %}
+        <div class="new-token-alert">
+            <strong>✓ New Token Generated Successfully!</strong>
+            <p>Copy your token now. You won't be able to see it again.</p>
+            <div class="new-token-value" id="newTokenValue">{{ new_token }}</div>
+            <button class="btn-action btn-copy" onclick="copyNewToken()">Copy Token</button>
+            <div class="new-token-note">
+                <strong>Important:</strong> Store this token securely. Anyone with this token can access your API data.
+            </div>
+        </div>
+    {% endif %}
+
+    {% if tokens %}
+        <div class="tokens-list">
+            {% for token in tokens %}
+                <div class="token-card">
+                    <div class="token-header">
+                        <div class="token-name">{{ token.name }}</div>
+                        <span class="token-status {% if token.is_active %}status-active{% else %}status-revoked{% endif %}">
+                            {% if token.is_active %}
+                                ✓ Active
+                            {% else %}
+                                ✕ Revoked
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="token-info">
+                        <div class="info-item">
+                            <span class="info-label">Created</span>
+                            <span class="info-value">{{ token.created_at|date:"M d, Y H:i" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Expires</span>
+                            <span class="info-value">
+                                {% if token.is_expired %}
+                                    <span style="color: #ef4444;">Expired on {{ token.expires_at|date:"M d, Y" }}</span>
+                                {% else %}
+                                    {{ token.expires_at|date:"M d, Y" }} ({{ token.days_until_expiry }} days)
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% if token.last_used %}
+                            <div class="info-item">
+                                <span class="info-label">Last Used</span>
+                                <span class="info-value">{{ token.last_used|date:"M d, Y H:i" }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="token-value">{{ token.token|truncatechars:50 }}...</div>
+
+                    <div class="token-actions">
+                        {% if token.is_active %}
+                            <button class="btn-action btn-copy" onclick="copyToken({{ token.id }})">Copy</button>
+                            <form method="post" action="{% url 'revoke_token' token.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-action btn-revoke" onclick="return confirm('Revoke this token?')">Revoke</button>
+                            </form>
+                        {% endif %}
+                        <form method="post" action="{% url 'delete_token' token.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-action btn-delete" onclick="return confirm('Permanently delete this token?')">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="token-card">
+            <div class="no-tokens">
+                <i class="bi bi-key"></i>
+                <p>No API tokens yet.</p>
+                <p style="font-size: 0.9rem; margin-top: 1rem;">Generate your first token to get started with the API.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal for generating token -->
+<div id="generateModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <h2 style="color: #f1f5f9; margin-bottom: 1.5rem;">Generate New API Token</h2>
+        <form method="post" action="{% url 'generate_token' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="token_name">Token Name</label>
+                <input type="text" id="token_name" name="token_name" placeholder="e.g., Production API, Development" required maxlength="100">
+                <small style="color: #94a3b8; display: block; margin-top: 0.5rem;">A friendly name to identify this token</small>
+            </div>
+
+            <div class="form-group">
+                <label for="expiry_days">Expiration (days)</label>
+                <select id="expiry_days" name="expiry_days">
+                    <option value="30">30 days</option>
+                    <option value="90">90 days</option>
+                    <option value="180">6 months</option>
+                    <option value="365" selected>1 year</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn-submit">Generate Token</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openModal() {
+        document.getElementById('generateModal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('generateModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('generateModal');
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    function copyToken(tokenId) {
+        fetch(`{% url 'copy_token' 0 %}`.replace('0', tokenId), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                navigator.clipboard.writeText(data.token).then(() => {
+                    alert('Token copied to clipboard!');
+                });
+            }
+        });
+    }
+
+    function copyNewToken() {
+        const tokenValue = document.getElementById('newTokenValue').textContent;
+        navigator.clipboard.writeText(tokenValue).then(() => {
+            alert('Token copied to clipboard!');
+        });
+    }
+</script>
+{% endblock %}

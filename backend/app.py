@@ -1,5 +1,13 @@
 from flask import Flask, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import (
+    JWTManager,
+    jwt_required,
+    create_access_token,
+    create_refresh_token,
+    get_jwt_identity,
+    verify_jwt_in_request
+)
+
 import json
 import re
 import datetime
@@ -24,12 +32,16 @@ app.config['SWAGGER'] = {
 # Attach Swagger to this Flask app so /apidocs (or configured route) will show docs
 swagger = Swagger(app)
 
+from datetime import datetime, timedelta  # <-- you already import datetime, just add timedelta
 
 # US-13: JWT Configuration
-# This secret key is used to sign JWT tokens (must be strong & private in real production)
-app.config['JWT_SECRET_KEY'] = 'terra-scope-super-secret-key-2025'  # Dev key; change for prod
-# Create the JWT manager object and attach it to the Flask app
+app.config['JWT_SECRET_KEY'] = 'terra-scope-super-secret-key-2025'
 jwt = JWTManager(app)
+
+# Token lifetimes (short access token to demo expiry easily)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(seconds=30)   # or 60 seconds
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=7)      # refresh valid for a week
+
 
 # -----------------------------
 # CONFIG
@@ -315,36 +327,56 @@ def login():
     """
     Login endpoint:
     - Takes username and password in JSON.
-    - If correct, returns a JWT access token for protected routes.
+    - If correct, returns access + refresh JWT tokens.
     """
-    data = request.get_json()  # Read JSON body from the request
-    # Validate that username and password were provided
+    data = request.get_json()
     if not data or 'username' not in data or 'password' not in data:
         return jsonify({
             "error": "Missing username or password",
             "code": 400
         }), 400
 
-    username = data['username']   # Extract username from JSON
-    password = data['password']   # Extract password from JSON
+    username = data['username']
+    password = data['password']
 
-    # Find user record in database by username
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
-        # Create JWT access token; identity must be serializable so we convert id to string
-        access_token = create_access_token(identity=str(user.id))  # Changed: str(user.id)
+        # Short-lived access token
+        access_token = create_access_token(identity=str(user.id))
+        # Longer-lived refresh token
+        refresh_token = create_refresh_token(identity=str(user.id))
+
         return jsonify({
-            "access_token": access_token,   # Token used in Authorization header
-            "token_type": "Bearer",         # Token type (standard prefix)
-            "user_id": user.id,             # User ID for client reference
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "Bearer",
+            "user_id": user.id,
             "message": "Login successful"
-        }, 200)
+        }), 200   # <-- status code here, not inside jsonify
     else:
-        # Return error if username/password are incorrect
         return jsonify({
             "error": "Invalid username or password",
             "code": 401
         }), 401
+@app.post("/auth/refresh")
+@jwt_required(refresh=True)
+def refresh():
+    """
+    Use a valid refresh token to get a new access token.
+    This supports the scenario:
+    'Given token expired, when refreshed, then new token returned.'
+    """
+    # identity is the same user id we stored when creating the token
+    current_user_id = get_jwt_identity()
+
+    # issue a brand new access token
+    new_access_token = create_access_token(identity=current_user_id)
+
+    return jsonify({
+        "access_token": new_access_token,
+        "token_type": "Bearer",
+        "message": "Access token refreshed successfully"
+    }), 200
 
 
 # US-13: GET /protected (simple protected endpoint for testing)
