@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',  # ← ADD THIS
     'core',  # Custom app for TerraSCOPE geospatial observation management
 ]
 
@@ -55,7 +56,7 @@ ROOT_URLCONF = 'terrascope.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  # ← This line MUST be present
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -63,6 +64,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.products_context',  # Your existing one
+                'core.context_processors.stripe_context',  # ADD THIS
             ],
         },
     },
@@ -112,8 +115,10 @@ USE_I18N = True
 
 USE_TZ = True
 
-LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "dashboard"
+# Authentication settings
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'dashboard'
+LOGOUT_REDIRECT_URL = 'home'  # This makes logout redirect to homepage
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
@@ -128,3 +133,12 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Stripe Configuration
+STRIPE_PUBLIC_KEY = 'pk_test_51SaVBhF8RfmqsdLZaDJWsyyLnIaypS0I1KdHtqZYpWBuLVNQUBmx97irIy0GLRSO9mjUMsqNRY8f0QMi02VhFohB00aZfVXuEG'  # Get from Stripe Dashboard
+STRIPE_SECRET_KEY = 'sk_test_51SaVBhF8RfmqsdLZiidcDf7dfHvuIkX767p8nJoNkTD6uniQuxyyeCged993WOorIMpQZmIVCZCqnGzvw6bPqzrE00JhQSmOQG'  # Get from Stripe Dashboard
+STRIPE_WEBHOOK_SECRET = ''  # Optional, for webhooks
+
+# After payment success, redirect here
+PAYMENT_SUCCESS_URL = 'http://127.0.0.1:8000/payment/success/'
+PAYMENT_CANCEL_URL = 'http://127.0.0.1:8000/payment/cancel/'

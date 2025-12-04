@@ -1,102 +1,724 @@
 {% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
 
 {% block title %}{{ product.name }} - TerraScope{% endblock %}
 
+{% block extra_css %}
+<style>
+    .product-detail-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .breadcrumb {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        margin-bottom: 2rem;
+    }
+
+    .breadcrumb a {
+        color: var(--primary-blue);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+
+    .product-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        margin-bottom: 3rem;
+    }
+
+    .product-image-section {
+        position: sticky;
+        top: 2rem;
+        height: fit-content;
+    }
+
+    .product-image {
+        width: 100%;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .product-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .product-title {
+        font-size: 3rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 1rem;
+        line-height: 1.2;
+    }
+
+    .product-tagline {
+        font-size: 1.2rem;
+        color: var(--text-muted);
+        margin-bottom: 2rem;
+        line-height: 1.6;
+    }
+
+    .product-description {
+        color: var(--text-light);
+        line-height: 1.8;
+        font-size: 1.05rem;
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .pricing-card {
+        background: var(--card-bg);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .pricing-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .starting-from {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+    }
+
+    .price-display {
+        font-size: 3.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+    }
+
+    .price-period {
+        color: var(--text-muted);
+        font-size: 1rem;
+    }
+
+    .duration-selector {
+        margin-bottom: 2rem;
+    }
+
+    .duration-label {
+        font-weight: 600;
+        color: var(--text-light);
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+    .duration-options {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .duration-option {
+        background: rgba(255, 255, 255, 0.02);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 1.25rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .duration-option:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--primary-blue);
+    }
+
+    .duration-option.selected {
+        background: rgba(59, 130, 246, 0.1);
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    }
+
+    .duration-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .duration-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.2rem;
+    }
+
+    .duration-text h4 {
+        color: var(--text-light);
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+
+    .duration-text p {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .duration-price {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary-blue);
+    }
+
+    .badge-popular {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-left: 0.5rem;
+    }
+
+    .badge-best {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-left: 0.5rem;
+    }
+
+    .subscribe-form {
+        margin-bottom: 2rem;
+    }
+
+    .subscribe-btn {
+        width: 100%;
+        padding: 1.25rem;
+        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+
+    .subscribe-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+    }
+
+    .subscribe-btn:active {
+        transform: translateY(0);
+    }
+
+    .subscribe-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .secure-payment {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        margin-top: 1rem;
+    }
+
+    .secure-payment i {
+        color: #10b981;
+    }
+
+    .whats-included {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .whats-included h3 {
+        color: var(--text-light);
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .included-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .included-list li {
+        padding: 1rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        color: var(--text-light);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .included-list li:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .included-list li i {
+        color: #10b981;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+
+    .features-section {
+        margin-bottom: 3rem;
+    }
+
+    .section-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--text-light);
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .section-title i {
+        color: var(--primary-blue);
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2rem;
+    }
+
+    .feature-card {
+        background: var(--card-bg);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 2rem;
+        transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary-blue);
+        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+    }
+
+    .feature-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        font-size: 1.8rem;
+        color: white;
+    }
+
+    .feature-card h3 {
+        color: var(--text-light);
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+    }
+
+    .feature-card p {
+        color: var(--text-muted);
+        line-height: 1.6;
+    }
+
+    .api-specs {
+        background: var(--card-bg);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .specs-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+    }
+
+    .spec-item {
+        text-align: center;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .spec-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--primary-blue);
+        margin-bottom: 0.5rem;
+    }
+
+    .spec-label {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 1024px) {
+        .product-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .product-image-section {
+            position: relative;
+            top: 0;
+        }
+
+        .features-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .specs-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-6">
+<div class="product-detail-container">
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+        <a href="{% url 'home' %}">
+            <i class="bi bi-house-door"></i> Home
+        </a>
+        <i class="bi bi-chevron-right"></i>
+        <a href="{% url 'product_list' %}">Products</a>
+        <i class="bi bi-chevron-right"></i>
+        <span>{{ product.name }}</span>
+    </div>
+
+    <!-- Main Product Grid -->
+    <div class="product-grid">
+        <!-- Left: Image -->
+        <div class="product-image-section">
             {% if product.image %}
-            <img src="{{ product.image.url }}" class="img-fluid rounded shadow" alt="{{ product.name }}">
+                <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-image">
             {% else %}
-            <div class="bg-secondary text-white text-center d-flex align-items-center justify-content-center rounded shadow" style="height: 400px;">
-                <span class="fs-4">No Image Available</span>
-            </div>
+                <img src="{% static 'images/placeholder-product.jpg' %}" alt="{{ product.name }}" class="product-image">
             {% endif %}
         </div>
-        
-        <div class="col-md-6">
-            <h1 class="mb-3">{{ product.name }}</h1>
-            <p class="lead">{{ product.description }}</p>
-            <h3 class="text-primary mb-4">${{ product.price }}/month</h3>
+
+        <!-- Right: Product Info -->
+        <div class="product-info-section">
+            <span class="product-badge">
+                <i class="bi bi-lightning-charge"></i> API Service
+            </span>
             
-            {% if user.is_authenticated %}
-                {% if existing_subscription %}
-                    <div class="alert alert-{% if existing_subscription.status == 'active' %}success{% elif existing_subscription.status == 'pending' %}warning{% else %}danger{% endif %} shadow-sm">
-                        <h5 class="mb-3">
-                            Subscription Status: 
-                            <span class="badge bg-{% if existing_subscription.status == 'active' %}success{% elif existing_subscription.status == 'pending' %}warning{% else %}danger{% endif %}">
-                                {{ existing_subscription.get_status_display }}
-                            </span>
-                        </h5>
-                        <p><strong>Duration:</strong> {{ existing_subscription.get_duration_months_display }}</p>
-                        <p><strong>Subscribed:</strong> {{ existing_subscription.subscribed_at|date:"M d, Y" }}</p>
-                        {% if existing_subscription.expires_at %}
-                        <p><strong>Expires:</strong> {{ existing_subscription.expires_at|date:"M d, Y" }}</p>
-                        {% if existing_subscription.status == 'active' %}
-                        <p><strong>Days Remaining:</strong> 
-                            <span class="badge bg-{% if existing_subscription.days_remaining > 7 %}success{% elif existing_subscription.days_remaining > 3 %}warning{% else %}danger{% endif %}">
-                                {{ existing_subscription.days_remaining }} days
-                            </span>
-                        </p>
-                        {% endif %}
-                        {% endif %}
-                    </div>
-                {% else %}
-                    <div class="card shadow">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Choose Subscription Duration</h5>
-                        </div>
-                        <div class="card-body">
-                            <form method="post" action="{% url 'subscribe_product' product.pk %}">
-                                {% csrf_token %}
-                                
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Select Duration:</label>
-                                    
-                                    {% for value, label in duration_choices %}
-                                    <div class="form-check mb-2 p-3 border rounded {% if forloop.first %}border-primary{% endif %}">
-                                        <input class="form-check-input" type="radio" name="duration" id="duration{{ value }}" value="{{ value }}" {% if forloop.first %}checked{% endif %}>
-                                        <label class="form-check-label w-100" for="duration{{ value }}">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <strong>{{ label }}</strong>
-                                                <span class="text-muted">
-                                                    {% if value == 1 %}
-                                                        ${{ product.price }}
-                                                    {% elif value == 2 %}
-                                                        ${% widthratio product.price 1 2 %}
-                                                        <span class="badge bg-success ms-2">Save 5%</span>
-                                                    {% elif value == 12 %}
-                                                        ${% widthratio product.price 1 12 %}
-                                                        <span class="badge bg-success ms-2">Save 20%</span>
-                                                    {% endif %}
-                                                </span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                                
-                                <button type="submit" class="btn btn-primary btn-lg w-100">
-                                    <i class="bi bi-cart-check"></i> Subscribe Now
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                {% endif %}
-            {% else %}
-                <div class="alert alert-warning shadow-sm">
-                    <p class="mb-0">
-                        <i class="bi bi-exclamation-triangle"></i> 
-                        Please <a href="{% url 'login' %}?next={{ request.path }}" class="alert-link">login</a> to subscribe to this product.
-                    </p>
+            <h1 class="product-title">{{ product.name }}</h1>
+            
+            <p class="product-tagline">
+                {{ product.short_description|default:"Professional API service for environmental data monitoring and analytics" }}
+            </p>
+
+            <div class="product-description">
+                {{ product.description|linebreaks }}
+            </div>
+
+            <!-- Pricing Card -->
+            <div class="pricing-card">
+                <div class="pricing-header">
+                    <div class="starting-from">Starting From</div>
+                    <div class="price-display">£{{ product.price_1_month|floatformat:2 }}</div>
+                    <div class="price-period">/month</div>
                 </div>
-            {% endif %}
-            
-            <a href="{% url 'product_list' %}" class="btn btn-outline-secondary mt-3">
-                <i class="bi bi-arrow-left"></i> Back to Products
-            </a>
+
+                <!-- Duration Selector -->
+                <div class="duration-selector">
+                    <label class="duration-label">Select Duration:</label>
+                    <div class="duration-options">
+                        <div class="duration-option selected" data-duration="1" data-price="{{ product.price_1_month }}">
+                            <div class="duration-info">
+                                <div class="duration-icon">
+                                    <i class="bi bi-calendar"></i>
+                                </div>
+                                <div class="duration-text">
+                                    <h4>1 Month</h4>
+                                    <p>Perfect for testing</p>
+                                </div>
+                            </div>
+                            <div class="duration-price">£{{ product.price_1_month|floatformat:2 }}</div>
+                        </div>
+
+                        <div class="duration-option" data-duration="2" data-price="{{ product.price_2_months }}">
+                            <div class="duration-info">
+                                <div class="duration-icon">
+                                    <i class="bi bi-calendar2"></i>
+                                </div>
+                                <div class="duration-text">
+                                    <h4>2 Months <span class="badge-popular">Popular</span></h4>
+                                    <p>Save 10% compared to monthly</p>
+                                </div>
+                            </div>
+                            <div class="duration-price">£{{ product.price_2_months|floatformat:2 }}</div>
+                        </div>
+
+                        <div class="duration-option" data-duration="12" data-price="{{ product.price_1_year }}">
+                            <div class="duration-info">
+                                <div class="duration-icon">
+                                    <i class="bi bi-calendar3"></i>
+                                </div>
+                                <div class="duration-text">
+                                    <h4>1 Year <span class="badge-best">Best Value</span></h4>
+                                    <p>Save 20% - 2 months free!</p>
+                                </div>
+                            </div>
+                            <div class="duration-price">£{{ product.price_1_year|floatformat:2 }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subscribe Form -->
+                <form action="{% url 'create_checkout_session' product.pk %}" method="post" id="subscribeForm" class="subscribe-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="duration" id="selected_duration" value="1">
+                    
+                    {% if user.is_authenticated %}
+                        <button type="submit" class="subscribe-btn" id="subscribeBtn">
+                            <i class="bi bi-cart-check"></i>
+                            <span>Proceed to Payment</span>
+                        </button>
+                    {% else %}
+                        <a href="{% url 'login' %}?next={{ request.path }}" class="subscribe-btn" style="text-decoration: none;">
+                            <i class="bi bi-box-arrow-in-right"></i>
+                            <span>Login to Subscribe</span>
+                        </a>
+                    {% endif %}
+                </form>
+
+                <div class="secure-payment">
+                    <i class="bi bi-shield-check"></i>
+                    <span>Secure payment powered by Stripe</span>
+                </div>
+            </div>
+
+            <!-- What's Included -->
+            <div class="whats-included">
+                <h3>
+                    <i class="bi bi-check-circle"></i>
+                    What's Included
+                </h3>
+                <ul class="included-list">
+                    <li>
+                        <i class="bi bi-lightning-charge-fill"></i>
+                        <span><strong>{{ product.api_calls_limit|intcomma }}</strong> API calls per month</span>
+                    </li>
+                    <li>
+                        <i class="bi bi-database-fill"></i>
+                        <span><strong>{{ product.data_limit_mb|intcomma }} MB</strong> data download limit</span>
+                    </li>
+                    <li>
+                        <i class="bi bi-clock-fill"></i>
+                        <span><strong>Real-time</strong> data access with 99.9% uptime</span>
+                    </li>
+                    <li>
+                        <i class="bi bi-file-earmark-text-fill"></i>
+                        <span><strong>Comprehensive</strong> API documentation</span>
+                    </li>
+                    <li>
+                        <i class="bi bi-headset"></i>
+                        <span><strong>24/7</strong> Technical support</span>
+                    </li>
+                    <li>
+                        <i class="bi bi-arrow-repeat"></i>
+                        <span><strong>Automatic</strong> subscription renewal</span>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
+
+    <!-- API Specifications -->
+    <div class="api-specs">
+        <h2 class="section-title">
+            <i class="bi bi-speedometer2"></i>
+            API Specifications
+        </h2>
+        <div class="specs-grid">
+            <div class="spec-item">
+                <div class="spec-value">{{ product.api_calls_limit|intcomma }}</div>
+                <div class="spec-label">API Calls/Month</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-value">{{ product.data_limit_mb|intcomma }}</div>
+                <div class="spec-label">Data Limit (MB)</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-value">99.9%</div>
+                <div class="spec-label">Uptime Guarantee</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Features -->
+    <div class="features-section">
+        <h2 class="section-title">
+            <i class="bi bi-stars"></i>
+            Key Features
+        </h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-lightning-charge"></i>
+                </div>
+                <h3>Real-Time Data Access</h3>
+                <p>Get instant access to live environmental monitoring data 24/7 with sub-second latency. Perfect for applications requiring up-to-the-minute accuracy.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-bullseye"></i>
+                </div>
+                <h3>High Accuracy</h3>
+                <p>Professional-grade sensors with 99.9% data accuracy. Our calibrated monitoring stations ensure reliable data for critical decision-making.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-code-slash"></i>
+                </div>
+                <h3>Easy API Integration</h3>
+                <p>RESTful API with comprehensive documentation, code examples in Python, JavaScript, and more. Get started in minutes with our SDK libraries.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-headset"></i>
+                </div>
+                <h3>24/7 Support</h3>
+                <p>Dedicated technical support team available round the clock. Email, chat, or phone support with average response time under 2 hours.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <h3>Historical Data</h3>
+                <p>Access up to 2 years of historical data for trend analysis and forecasting. Export data in CSV, JSON, or XML formats.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-geo-alt"></i>
+                </div>
+                <h3>Global Coverage</h3>
+                <p>Monitor environmental data from over 10,000 locations worldwide. Location-based queries with city, coordinates, or radius search.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back Button -->
+    <div style="text-align: center; margin-top: 3rem;">
+        <a href="{% url 'product_list' %}" class="subscribe-btn" style="max-width: 300px; margin: 0 auto; text-decoration: none;">
+            <i class="bi bi-arrow-left"></i>
+            Back to Products
+        </a>
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Duration selection handler
+    const durationOptions = document.querySelectorAll('.duration-option');
+    const selectedDurationInput = document.getElementById('selected_duration');
+    const priceDisplay = document.querySelector('.price-display');
+    const subscribeBtn = document.getElementById('subscribeBtn');
+
+    durationOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            // Remove selected class from all options
+            durationOptions.forEach(opt => opt.classList.remove('selected'));
+            
+            // Add selected class to clicked option
+            this.classList.add('selected');
+            
+            // Update hidden input
+            const duration = this.dataset.duration;
+            const price = this.dataset.price;
+            selectedDurationInput.value = duration;
+            
+            // Update price display
+            priceDisplay.textContent = '£' + parseFloat(price).toFixed(2);
+            
+            console.log('Selected duration:', duration, 'Price:', price);
+        });
+    });
+
+    // Form submission handler
+    const subscribeForm = document.getElementById('subscribeForm');
+    if (subscribeForm) {
+        subscribeForm.addEventListener('submit', function(e) {
+            // Show loading state
+            if (subscribeBtn) {
+                subscribeBtn.disabled = true;
+                subscribeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+            }
+            
+            console.log('Form submitted with duration:', selectedDurationInput.value);
+        });
+    }
+</script>
 {% endblock %}

@@ -2,181 +2,410 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}TerraScope Console{% endblock %}</title>
-
-    <!-- Bootstrap -->
+    
+    <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
-        body {
-            min-height: 100vh;
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --accent-color: #10b981;
+            --dark-bg: #0f172a;
+            --card-bg: #1e293b;
+            --text-light: #e2e8f0;
+            --text-muted: #94a3b8;
+        }
+        
+        * {
             margin: 0;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background:
-                radial-gradient(circle at top left, #0f172a 0, #020617 45%, #000000 100%);
-            color: #e5e7eb;
+            padding: 0;
+            box-sizing: border-box;
         }
-
-        .console-nav {
-            background: radial-gradient(circle at top left, #1f2937 0, #020617 60%);
-            border-bottom: 1px solid rgba(148,163,184,0.35);
-            box-shadow:
-                0 10px 30px rgba(0,0,0,0.8),
-                0 0 18px rgba(56,189,248,0.35);
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text-light);
+            min-height: 100vh;
         }
-
-        .console-nav .navbar-brand {
+        
+        /* Navbar Styling */
+        .navbar-custom {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+        
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             display: flex;
             align-items: center;
-            gap: 0.6rem;
+            gap: 0.5rem;
+        }
+        
+        .nav-link {
+            color: var(--text-muted) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem !important;
+            border-radius: 8px;
+        }
+        
+        .nav-link:hover {
+            color: var(--text-light) !important;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .nav-link.active {
+            color: var(--text-light) !important;
+            background: rgba(59, 130, 246, 0.2);
+        }
+        
+        /* Hero Section */
+        .hero-section {
+            padding: 4rem 0;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+            border-radius: 20px;
+            margin: 2rem 0;
+        }
+        
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* Product Cards */
+        .product-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+        
+        .product-image-wrapper {
+            position: relative;
+            height: 220px;
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(16, 185, 129, 0.2) 100%);
+        }
+        
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .product-card:hover .product-image {
+            transform: scale(1.1);
+        }
+        
+        .product-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
             font-weight: 600;
-            letter-spacing: 0.04em;
-            color: #f9fafb !important;
         }
-
-        .console-logo-pill {
-            width: 32px;
-            height: 32px;
-            border-radius: 999px;
-            background: radial-gradient(circle at 25% 0, #6ee7b7, #22c55e 35%, #0ea5e9 100%);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
+        
+        .product-body {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .product-title {
+            font-size: 1.5rem;
             font-weight: 700;
-            color: #020617;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
         }
-
-        .console-nav .nav-link {
-            color: #9ca3af !important;
-            font-size: 0.9rem;
+        
+        .product-description {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            flex-grow: 1;
         }
-
-        .console-nav .nav-link.active,
-        .console-nav .nav-link:hover {
-            color: #e5e7eb !important;
+        
+        .product-price {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #10b981;
+            margin-bottom: 1rem;
         }
-
-        .console-nav .user-pill {
-            padding: 0.35rem 0.75rem;
-            border-radius: 999px;
-            background: rgba(15,23,42,0.9);
-            border: 1px solid rgba(148,163,184,0.4);
-            font-size: 0.8rem;
-            color: #e5e7eb;
+        
+        .product-price span {
+            font-size: 1rem;
+            color: var(--text-muted);
+            font-weight: 400;
         }
-
-        .console-shell {
-            max-width: 1200px;
-            margin: 1.75rem auto 2.5rem;
-            padding: 1.75rem;
-            border-radius: 1.5rem;
-            background:
-                radial-gradient(circle at top right, rgba(56,189,248,0.14), transparent 55%),
-                radial-gradient(circle at bottom left, rgba(52,211,153,0.14), transparent 55%),
-                rgba(15,23,42,0.92);
-            border: 1px solid rgba(148,163,184,0.4);
-            box-shadow:
-                0 25px 60px rgba(0,0,0,0.85),
-                0 0 40px rgba(34,197,94,0.28);
+        
+        .btn-view-details {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border: none;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
         }
-
-        .console-shell h1,
-        .console-shell h2,
-        .console-shell h3 {
-            color: #f9fafb;
+        
+        .btn-view-details:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+            color: white;
         }
-
-        .console-shell p {
-            color: #9ca3af;
+        
+        /* Section Headers */
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
         }
-
-        .badge-environment {
-            background: rgba(248,250,252,0.05);
-            border-radius: 999px;
-            padding: 0.15rem 0.7rem;
-            border: 1px solid rgba(148,163,184,0.35);
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
+        
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
         }
-
-        .alert {
-            border-radius: 0.85rem;
+        
+        .section-subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+        
+        /* Stats Section */
+        .stats-section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 3rem;
+            margin: 3rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin-top: 0.5rem;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+        }
+        
+        .empty-state-icon {
+            font-size: 4rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+        
+        /* Footer */
+        .footer {
+            background: rgba(15, 23, 42, 0.95);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem 0;
+            margin-top: 4rem;
+        }
+        
+        /* Badge Colors */
+        .bg-success {
+            background-color: #10b981 !important;
+        }
+        
+        .bg-warning {
+            background-color: #f59e0b !important;
+        }
+        
+        .bg-danger {
+            background-color: #ef4444 !important;
+        }
+        
+        /* Logout button styling */
+        .nav-item form {
+            margin: 0;
+            display: inline-block;
+        }
+        
+        .nav-item form button.nav-link {
+            transition: all 0.3s ease;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .nav-item form button.nav-link:hover {
+            color: var(--text-light) !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+        
+        /* User greeting */
+        .nav-link[style*="cursor: default"] {
+            pointer-events: none;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
         }
     </style>
+    
+    {% block extra_css %}{% endblock %}
 
-    {% block extra_head %}{% endblock %}
+    {% if STRIPE_PUBLIC_KEY %}
+    <script>
+        // Make Stripe key available to all pages
+        window.STRIPE_PUBLIC_KEY = '{{ STRIPE_PUBLIC_KEY }}';
+    </script>
+    {% endif %}
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark console-nav">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="{% url 'product_list' %}">
-            <span class="console-logo-pill">TS</span>
-            <span>TerraScope Console</span>
-        </a>
-
-        <span class="badge-environment ms-2 d-none d-md-inline">Prototype</span>
-
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <div class="collapse navbar-collapse justify-content-between" id="mainNav">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item">
-                    <a class="nav-link{% if request.path == '/' or request.resolver_match.url_name == 'product_list' %} active{% endif %}"
-                       href="{% url 'product_list' %}">
-                        Products
-                    </a>
-                </li>
-                {% if user.is_authenticated %}
-                <li class="nav-item">
-                    <a class="nav-link{% if request.resolver_match.url_name == 'dashboard' %} active{% endif %}"
-                       href="{% url 'dashboard' %}">
-                        Dashboard
-                    </a>
-                </li>
-                {% endif %}
-            </ul>
-
-            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                {% if user.is_authenticated %}
-                    <li class="nav-item me-2">
-                        <span class="nav-link user-pill">
-                            {{ user.username }}
-                        </span>
-                    </li>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-custom fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'home' %}">
+                <i class="bi bi-globe2"></i>
+                TerraScope Console
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'logout' %}">Log out</a>
+                        <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home' %}">
+                            <i class="bi bi-house-door"></i> Home
+                        </a>
                     </li>
-                {% else %}
+                    
                     <li class="nav-item">
-                        <!-- IMPORTANT: use our custom login view, not /admin/login/ -->
-                        <a class="nav-link" href="{% url 'login' %}">Login</a>
+                        <a class="nav-link {% if request.resolver_match.url_name == 'product_list' %}active{% endif %}" href="{% url 'product_list' %}">
+                            <i class="bi bi-grid"></i> Products
+                        </a>
                     </li>
-                {% endif %}
-            </ul>
-        </div>
-    </div>
-</nav>
-
-<main class="console-shell">
-    {% if messages %}
-        <div class="mb-3">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">
-                    {{ message }}
+                    
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+                
+                <!-- User account and logout -->
+                <div class="d-flex align-items-center">
+                    {% if user.is_authenticated %}
+                        <span class="nav-link" style="cursor: default;">Welcome, {{ user.username }}!</span>
+                        
+                        <form method="post" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="nav-link">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </button>
+                        </form>
+                    {% else %}
+                        <a class="btn btn-primary" href="{% url 'login' %}">
+                            <i class="bi bi-person-fill"></i> Login
+                        </a>
+                    {% endif %}
                 </div>
-            {% endfor %}
+            </div>
         </div>
-    {% endif %}
-
-    {% block content %}{% endblock %}
-</main>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-{% block extra_js %}{% endblock %}
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="container" style="margin-top: 80px;">
+        {% block content %}{% endblock %}
+    </div>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container text-center">
+            <p class="mb-0" style="color: var(--text-muted);">
+                &copy; 2023 TerraScope. All rights reserved.
+            </p>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap 5 Bundle (including Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

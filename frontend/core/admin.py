@@ -1,37 +1,52 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Product, Subscription
+from .models import Product, Subscription, SubscriptionUsage
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['name', 'price', 'image_preview', 'created_at']
-    list_filter = ['created_at']
+    list_display = ['name', 'price_1_month', 'api_calls_limit', 'data_limit_mb', 'is_active']
+    list_filter = ['is_active']
     search_fields = ['name', 'description']
     
-    def image_preview(self, obj):
-        if obj.image:
-            return format_html('<img src="{}" width="50" height="50" style="border-radius: 5px;" />', obj.image.url)
-        return "No Image"
-    image_preview.short_description = 'Preview'
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'short_description', 'description', 'image', 'is_active')
+        }),
+        ('Pricing', {
+            'fields': ('price_1_month', 'price_2_months', 'price_1_year'),
+            'description': 'Set pricing for different subscription durations'
+        }),
+        ('API Limits', {
+            'fields': ('api_calls_limit', 'data_limit_mb'),
+            'description': 'Define usage limits for this product'
+        }),
+    )
 
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ['user', 'product', 'status', 'duration_display', 'expires_at', 'days_left', 'subscribed_at']
-    list_filter = ['status', 'duration_months', 'subscribed_at']
-    search_fields = ['user__username', 'product__name']
-    readonly_fields = ['subscribed_at']
+    # Use only fields that exist in your model
+    list_display = ['user', 'product', 'status', 'expires_at', 'api_calls_made']
+    list_filter = ['status']
+    search_fields = ['user__username', 'user__email', 'product__name']
+    # Don't include any readonly_fields for now
     
-    def duration_display(self, obj):
-        return dict(obj.DURATION_CHOICES).get(obj.duration_months, 'Unknown')
-    duration_display.short_description = 'Duration'
-    
-    def days_left(self, obj):
-        if obj.status == 'active' and obj.expires_at:
-            days = obj.days_remaining()
-            if days > 0:
-                color = 'green' if days > 7 else 'orange' if days > 3 else 'red'
-                return format_html('<span style="color: {}; font-weight: bold;">{} days</span>', color, days)
-            return format_html('<span style="color: red; font-weight: bold;">Expired</span>')
-        return '-'
-    days_left.short_description = 'Days Remaining'
+    fieldsets = (
+        ('Subscription Details', {
+            'fields': ('user', 'product', 'status', 'expires_at')
+        }),
+        ('Usage Statistics', {
+            'fields': ('api_calls_made', 'api_calls_limit', 'data_downloaded_mb', 'data_limit_mb')
+        }),
+        ('Payment Information', {
+            'fields': ('total_cost',)
+        }),
+    )
+
+
+@admin.register(SubscriptionUsage)
+class SubscriptionUsageAdmin(admin.ModelAdmin):
+    list_display = ['subscription', 'date', 'api_calls', 'data_downloaded_mb']
+    list_filter = ['date']
+    search_fields = ['subscription__user__username']
+    date_hierarchy = 'date'

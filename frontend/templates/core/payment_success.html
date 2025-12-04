@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Successful - TerraScope{% endblock %}
+
+{% block extra_css %}
+<style>
+    .success-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 0;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.05) 100%);
+    }
+    
+    .success-card {
+        background: var(--card-bg);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 4rem 3rem;
+        max-width: 600px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    .success-icon {
+        width: 120px;
+        height: 120px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 2rem;
+        font-size: 4rem;
+        color: white;
+        animation: scaleIn 0.6s ease;
+    }
+    
+    @keyframes scaleIn {
+        0% {
+            transform: scale(0) rotate(0deg);
+            opacity: 0;
+        }
+        50% {
+            transform: scale(1.1) rotate(180deg);
+        }
+        100% {
+            transform: scale(1) rotate(360deg);
+            opacity: 1;
+        }
+    }
+    
+    .success-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--text-light);
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .success-message {
+        color: var(--text-muted);
+        font-size: 1.2rem;
+        margin-bottom: 2.5rem;
+        line-height: 1.6;
+    }
+    
+    .subscription-details {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2.5rem;
+        text-align: left;
+    }
+    
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+    
+    .detail-label {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .detail-value {
+        color: var(--text-light);
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .btn-dashboard {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border: none;
+        color: white;
+        padding: 1.25rem 2.5rem;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .btn-dashboard:hover {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(37, 99, 235, 0.4);
+        color: white;
+    }
+    
+    .btn-products {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text-light);
+        padding: 1.25rem 2.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .btn-products:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
+        color: var(--text-light);
+    }
+    
+    .success-features {
+        margin-top: 2.5rem;
+        padding-top: 2rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .feature-item {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+    }
+    
+    .feature-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .feature-item i {
+        color: #10b981;
+        font-size: 1.5rem;
+    }
+    
+    @media (max-width: 576px) {
+        .success-card {
+            padding: 3rem 2rem;
+            margin: 1rem;
+        }
+        
+        .success-title {
+            font-size: 2rem;
+        }
+        
+        .button-group {
+            flex-direction: column;
+        }
+        
+        .btn-dashboard,
+        .btn-products {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="success-container">
+    <div class="success-card">
+        <!-- Success Icon -->
+        <div class="success-icon">
+            <i class="bi bi-check-lg"></i>
+        </div>
+
+        <!-- Title & Message -->
+        <h1 class="success-title">Payment Successful!</h1>
+        <p class="success-message">
+            Your subscription to <strong>{{ product.name }}</strong> is now active.
+            You can start accessing the API immediately.
+        </p>
+
+        <!-- Subscription Details -->
+        <div class="subscription-details">
+            <div class="detail-row">
+                <span class="detail-label">
+                    <i class="bi bi-box"></i>
+                    Product
+                </span>
+                <span class="detail-value">{{ product.name }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">
+                    <i class="bi bi-calendar"></i>
+                    Duration
+                </span>
+                <span class="detail-value">{{ subscription.get_duration_months_display }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">
+                    <i class="bi bi-cash"></i>
+                    Amount Paid
+                </span>
+                <span class="detail-value">£{{ subscription.total_cost }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">
+                    <i class="bi bi-calendar-check"></i>
+                    Expires On
+                </span>
+                <span class="detail-value">{{ subscription.expires_at|date:"M d, Y" }}</span>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="button-group">
+            <a href="{% url 'dashboard' %}" class="btn-dashboard">
+                <i class="bi bi-speedometer2"></i>
+                Go to Dashboard
+            </a>
+            <a href="{% url 'product_list' %}" class="btn-products">
+                <i class="bi bi-grid"></i>
+                Browse More Products
+            </a>
+        </div>
+
+        <!-- Features -->
+        <div class="success-features">
+            <div class="feature-item">
+                <i class="bi bi-lightning-charge-fill"></i>
+                <span>Instant API access activated</span>
+            </div>
+            <div class="feature-item">
+                <i class="bi bi-shield-check"></i>
+                <span>Secure and encrypted connection</span>
+            </div>
+            <div class="feature-item">
+                <i class="bi bi-headset"></i>
+                <span>24/7 support available</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

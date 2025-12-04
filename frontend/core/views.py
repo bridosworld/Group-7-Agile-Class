@@ -1,126 +1,339 @@
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .models import Product, Subscription
-import requests
-from django.contrib.auth import authenticate, login, logout
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Sum, F
+from django.urls import reverse
+from django.http import JsonResponse
+from datetime import datetime, timedelta
+from django.utils import timezone
 from django.contrib import messages
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import login
+import json
+import stripe
+from django.conf import settings
+from .models import Product, Subscription, SubscriptionUsage
 
+# Set Stripe API key
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+def home(request):
+    """Home page view"""
+    products = Product.objects.filter(is_active=True)[:6]
+    return render(request, 'core/home.html', {'products': products})
 
 def product_list(request):
-    """Display all available products"""
-    products = Product.objects.all()
+    """Display all active products"""
+    products = Product.objects.filter(is_active=True)
     return render(request, 'core/product_list.html', {'products': products})
 
 def product_detail(request, pk):
-    """Display details for a specific product"""
-    product = get_object_or_404(Product, pk=pk)
+    """Display product details"""
+    product = get_object_or_404(Product, pk=pk, is_active=True)
     return render(request, 'core/product_detail.html', {'product': product})
 
 @login_required
-def subscribe(request, pk):
-    """Subscribe user to a product"""
-    product = get_object_or_404(Product, pk=pk)
+def create_checkout_session(request, product_id):
+    """Create Stripe checkout session for product purchase"""
+    if request.method != 'POST':
+        return redirect('product_detail', pk=product_id)
     
-    if request.method == 'POST':
-        # Check if user already has a subscription
-        existing_sub = Subscription.objects.filter(
-            user=request.user, 
-            product=product
-        ).first()
+    try:
+        product = get_object_or_404(Product, pk=product_id, is_active=True)
+        duration = int(request.POST.get('duration', 1))
         
-        if not existing_sub:
-            Subscription.objects.create(
+        # Calculate price based on duration
+        if duration == 1:
+            amount = float(product.price_1_month)
+            duration_text = "1 Month"
+        elif duration == 2:
+            amount = float(product.price_2_months)
+            duration_text = "2 Months"
+        elif duration == 12:
+            amount = float(product.price_1_year)
+            duration_text = "1 Year"
+        else:
+            amount = float(product.price_1_month)
+            duration = 1
+            duration_text = "1 Month"
+        
+        # Create Stripe checkout session
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'gbp',
+                    'unit_amount': int(amount * 100),
+                    'product_data': {
+                        'name': f'{product.name} - {duration_text}',
+                        'description': product.short_description or product.description[:100],
+                    },
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=request.build_absolute_uri(
+                reverse('payment_success')
+            ) + f'?session_id={{CHECKOUT_SESSION_ID}}&product_id={product_id}&duration={duration}',
+            cancel_url=request.build_absolute_uri(
+                reverse('payment_cancel')
+            ) + f'?product_id={product_id}',
+            client_reference_id=str(request.user.id),
+            metadata={
+                'product_id': str(product_id),
+                'duration': str(duration),
+                'user_id': str(request.user.id),
+                'user_email': request.user.email,
+            }
+        )
+        
+        return redirect(checkout_session.url)
+        
+    except stripe.error.StripeError as e:
+        messages.error(request, f'Payment error: {str(e)}')
+        return redirect('product_detail', pk=product_id)
+    except Exception as e:
+        messages.error(request, f'An error occurred: {str(e)}')
+        return redirect('product_detail', pk=product_id)
+
+@login_required
+def payment_success(request):
+    """Handle successful payment and create subscription"""
+    session_id = request.GET.get('session_id')
+    product_id = request.GET.get('product_id')
+    duration = int(request.GET.get('duration', 1))
+    
+    if not session_id or not product_id:
+        messages.error(request, 'Invalid payment session')
+        return redirect('product_list')
+    
+    try:
+        session = stripe.checkout.Session.retrieve(session_id)
+        
+        if session.payment_status == 'paid':
+            product = get_object_or_404(Product, pk=product_id)
+            
+            if duration == 1:
+                expires_at = timezone.now() + timedelta(days=30)
+                total_cost = product.price_1_month
+            elif duration == 2:
+                expires_at = timezone.now() + timedelta(days=60)
+                total_cost = product.price_2_months
+            elif duration == 12:
+                expires_at = timezone.now() + timedelta(days=365)
+                total_cost = product.price_1_year
+            else:
+                expires_at = timezone.now() + timedelta(days=30)
+                total_cost = product.price_1_month
+            
+            subscription = Subscription.objects.create(
                 user=request.user,
                 product=product,
-                status='active'
+                status='active',
+                subscribed_at=timezone.now(),
+                expires_at=expires_at,
+                duration_months=duration if duration != 12 else 12,
+                total_cost=total_cost,
+                api_calls_limit=product.api_calls_limit,
+                data_limit_mb=product.data_limit_mb,
+                api_calls_made=0,
+                data_downloaded_mb=0,
             )
-        
-        return redirect('dashboard')
+            
+            SubscriptionUsage.objects.create(
+                subscription=subscription,
+                date=timezone.now().date(),
+                api_calls=0,
+                data_downloaded_mb=0,
+                requests_successful=0,
+                requests_failed=0,
+                avg_response_time_ms=0,  # ✅ ADD THIS LINE
+            )
+            
+            messages.success(request, f'Successfully subscribed to {product.name}!')
+            
+            return render(request, 'core/payment_success.html', {
+                'subscription': subscription,
+                'product': product,
+            })
+        else:
+            messages.error(request, 'Payment was not completed successfully')
+            return redirect('product_detail', pk=product_id)
     
-    return redirect('product_detail', pk=pk)
+    except stripe.error.StripeError as e:
+        messages.error(request, f'Payment verification error: {str(e)}')
+        return redirect('product_list')
+    except Exception as e:
+        messages.error(request, f'An error occurred: {str(e)}')
+        return redirect('product_list')
+
+def payment_cancel(request):
+    """Handle cancelled payment"""
+    product_id = request.GET.get('product_id')
+    messages.warning(request, 'Payment was cancelled')
+    
+    if product_id:
+        return redirect('product_detail', pk=product_id)
+    return redirect('product_list')
 
 @login_required
 def dashboard(request):
-    """User dashboard showing their subscriptions"""
-    subs = Subscription.objects.filter(user=request.user).select_related('product')
+    """User dashboard with subscriptions and usage analytics"""
+    user = request.user
     
-    # Try to fetch observations from API
-    metrics = {}
-    try:
-        import requests
-        token = request.session.get('jwt_token')
-        if token:
-            headers = {'Authorization': f'Bearer {token}'}
-            API_BASE = 'http://127.0.0.1:5000'
-            response = requests.get(f'{API_BASE}/observations', headers=headers, timeout=5)
-            
-            if response.status_code == 200:
-                observations = response.json()
-                for obs in observations:
-                    sat = obs.get('satellite_id', 'Unknown')
-                    metrics[sat] = metrics.get(sat, 0) + 1
-    except Exception as e:
-        print(f"API Error: {e}")
-        metrics = {'No Data': 0}
+    subscriptions = Subscription.objects.filter(user=user).select_related('product').order_by('-subscribed_at')
     
-    # Pass metrics as dict (json_script will handle serialization)
-    return render(request, 'core/dashboard.html', {
-        'subs': subs,
-        'metrics': metrics,  # Pass as dict, not JSON string
-    })
+    total_spent = subscriptions.aggregate(total=Sum('total_cost'))['total'] or 0
+    active_subscriptions = subscriptions.filter(status='active').count()
+    total_api_calls = subscriptions.aggregate(total=Sum('api_calls_made'))['total'] or 0
+    total_data_used = subscriptions.aggregate(total=Sum('data_downloaded_mb'))['total'] or 0
+    
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=29)
+    
+    chart_labels = []
+    api_calls_data = []
+    data_usage_data = []
+    success_rate_data = []
+    
+    current_date = start_date
+    while current_date <= end_date:
+        chart_labels.append(current_date.strftime('%b %d'))
+        
+        daily_usage = SubscriptionUsage.objects.filter(
+            subscription__user=user,
+            date=current_date
+        ).aggregate(
+            total_calls=Sum('api_calls'),
+            total_data=Sum('data_downloaded_mb'),
+            total_successful=Sum('requests_successful'),
+            total_failed=Sum('requests_failed')
+        )
+        
+        calls = daily_usage['total_calls'] or 0
+        api_calls_data.append(calls)
+        
+        data = float(daily_usage['total_data'] or 0)
+        data_usage_data.append(round(data, 2))
+        
+        successful = daily_usage['total_successful'] or 0
+        failed = daily_usage['total_failed'] or 0
+        total_requests = successful + failed
+        success_rate = (successful / total_requests * 100) if total_requests > 0 else 100
+        success_rate_data.append(round(success_rate, 2))
+        
+        current_date += timedelta(days=1)
+    
+    context = {
+        'subscriptions': subscriptions,
+        'total_spent': total_spent,
+        'active_subscriptions': active_subscriptions,
+        'total_api_calls': total_api_calls,
+        'total_data_used': total_data_used,
+        'chart_labels': json.dumps(chart_labels),
+        'api_calls_data': json.dumps(api_calls_data),
+        'data_usage_data': json.dumps(data_usage_data),
+        'success_rate_data': json.dumps(success_rate_data),
+    }
+    
+    return render(request, 'core/dashboard.html', context)
 
-def user_login(request):
-    """
-    US-16: Log in to Django AND fetch JWT from Flask API.
-    """
-    if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
+@login_required
+def subscription_detail(request, pk):
+    """Display subscription details"""
+    subscription = get_object_or_404(
+        Subscription.objects.select_related('product'),
+        pk=pk,
+        user=request.user
+    )
+    
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=29)
+    
+    usage_data = SubscriptionUsage.objects.filter(
+        subscription=subscription,
+        date__gte=start_date,
+        date__lte=end_date
+    ).order_by('date')
+    
+    chart_labels = []
+    api_calls_data = []
+    data_usage_data = []
+    
+    current_date = start_date
+    while current_date <= end_date:
+        chart_labels.append(current_date.strftime('%b %d'))
+        
+        usage = usage_data.filter(date=current_date).first()
+        if usage:
+            api_calls_data.append(usage.api_calls)
+            data_usage_data.append(float(usage.data_downloaded_mb))
+        else:
+            api_calls_data.append(0)
+            data_usage_data.append(0)
+        
+        current_date += timedelta(days=1)
+    
+    context = {
+        'subscription': subscription,
+        'chart_labels': json.dumps(chart_labels),
+        'api_calls_data': json.dumps(api_calls_data),
+        'data_usage_data': json.dumps(data_usage_data),
+    }
+    
+    return render(request, 'core/subscription_detail.html', context)
 
-        # 1) Django auth
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
+@login_required
+def pause_subscription(request, pk):
+    """Pause a subscription"""
+    if request.method == 'POST':
+        subscription = get_object_or_404(Subscription, pk=pk, user=request.user)
+        if subscription.status == 'active':
+            subscription.status = 'paused'
+            subscription.paused_at = timezone.now()
+            subscription.save()
+            messages.success(request, f'Subscription to {subscription.product.name} has been paused')
+        else:
+            messages.warning(request, 'Only active subscriptions can be paused')
+    return redirect('subscription_detail', pk=pk)
+
+@login_required
+def resume_subscription(request, pk):
+    """Resume a paused subscription"""
+    if request.method == 'POST':
+        subscription = get_object_or_404(Subscription, pk=pk, user=request.user)
+        if subscription.status == 'paused':
+            subscription.status = 'active'
+            subscription.paused_at = None
+            subscription.save()
+            messages.success(request, f'Subscription to {subscription.product.name} has been resumed')
+        else:
+            messages.warning(request, 'Only paused subscriptions can be resumed')
+    return redirect('subscription_detail', pk=pk)
+
+@login_required
+def cancel_subscription(request, pk):
+    """Cancel a subscription"""
+    if request.method == 'POST':
+        subscription = get_object_or_404(Subscription, pk=pk, user=request.user)
+        if subscription.status in ['active', 'paused']:
+            subscription.status = 'cancelled'
+            subscription.cancelled_at = timezone.now()
+            subscription.save()
+            messages.success(request, f'Subscription to {subscription.product.name} has been cancelled')
+        else:
+            messages.warning(request, 'This subscription is already cancelled or expired')
+    return redirect('dashboard')
+
+def register(request):
+    """User registration view"""
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
             login(request, user)
-
-            # 2) Call Flask API /auth/login to get JWT
-            jwt_token = None
-            try:
-                API_BASE = "http://127.0.0.1:5000"
-                resp = requests.post(
-                    f"{API_BASE}/auth/login",
-                    json={"username": username, "password": password},
-                    timeout=5,
-                )
-                if resp.status_code == 200:
-                    jwt_token = resp.json().get("access_token")
-                    request.session["jwt_token"] = jwt_token
-                    print("JWT saved in session:", request.session.get("jwt_token"))
-                else:
-                    messages.warning(
-                        request,
-                        "Logged into website, but API token could not be obtained.",
-                    )
-            except Exception as e:
-                messages.warning(
-                    request,
-                    f"Logged into website, but API is unavailable ({e}).",
-                )
-
-            return redirect("dashboard")
-
-        # Wrong Django username/password
-        messages.error(request, "Invalid username or password")
-        return redirect("login")
-
-    # GET request – show login form
-    return render(request, "core/login.html")
-
-
-def user_logout(request):
-    """
-    Log out of Django and clear JWT from session.
-    """
-    logout(request)
-    request.session.pop("jwt_token", None)
-    messages.info(request, "You have been logged out.")
-    return redirect("login")
+            messages.success(request, 'Account created successfully!')
+            return redirect('dashboard')
+    else:
+        form = UserCreationForm()
+    return render(request, 'core/register.html', {'form': form})
