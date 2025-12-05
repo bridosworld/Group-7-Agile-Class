@@ -1,6 +1,10 @@
 from django.contrib import admin
 from django.utils.html import format_html
+
+from .models import Product, Subscription, SubscriptionUsage, UserToken, UserProfile
+
 from .models import Product, Subscription, SubscriptionUsage, UserToken
+
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
@@ -68,5 +72,36 @@ class UserTokenAdmin(admin.ModelAdmin):
         }),
         ('Status', {
             'fields': ('is_active', 'created_at', 'expires_at', 'last_used')
+        }),
+    )
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ['user', 'company', 'job_title', 'phone_number', 'email_notifications']
+    list_filter = ['email_notifications', 'usage_alerts', 'marketing_emails', 'created_at']
+    search_fields = ['user__username', 'user__email', 'company', 'phone_number']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    fieldsets = (
+        ('User', {
+            'fields': ('user',)
+        }),
+        ('Personal Information', {
+            'fields': ('phone_number', 'company', 'job_title', 'bio', 'avatar')
+        }),
+        ('Address', {
+            'fields': ('address_line1', 'address_line2', 'city', 'state', 'country', 'postal_code'),
+            'classes': ('collapse',)
+        }),
+        ('Preferences', {
+            'fields': ('timezone', 'language')
+        }),
+        ('Notifications', {
+            'fields': ('email_notifications', 'usage_alerts', 'marketing_emails')
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
         }),
     )

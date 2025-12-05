@@ -1,5 +1,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
+from django.views.generic import RedirectView
+from . import views
 from import views
 
 urlpatterns = [
@@ -8,8 +10,8 @@ urlpatterns = [
     path('products/', views.product_list, name='product_list'),
     path('products/<int:pk>/', views.product_detail, name='product_detail'),
     
-    # Authentication
-    path('login/', auth_views.LoginView.as_view(template_name='core/login.html'), name='login'),
+    # Authentication - redirect old login to 2FA login
+    path('login/', RedirectView.as_view(pattern_name='two_factor:login', permanent=False), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='home'), name='logout'),
     path('register/', views.register, name='register'),  #UNCOMMENT/ADD THIS
     
@@ -39,6 +41,14 @@ urlpatterns = [
     path('subscription/<int:subscription_id>/generate-token/', views.generate_token, name='generate_token'),
     path('token/<int:token_id>/revoke/', views.revoke_token, name='revoke_token'),
     path('token/<int:token_id>/refresh/', views.refresh_token, name='refresh_token'),
+
+    # Token Management URLs
+    path('subscription/<int:subscription_id>/generate-token/', views.generate_token, name='generate_token'),
+    path('token/<int:token_id>/revoke/', views.revoke_token, name='revoke_token'),
+    path('token/<int:token_id>/refresh/', views.refresh_token, name='refresh_token'),
+    
+    # User Profile
+    path('profile/', views.profile, name='profile'),
 
     # API Tokens
     path('api-tokens/', views.api_tokens, name='api_tokens'),

@@ -3,6 +3,26 @@
 
 {% block two_factor_content %}
 <div class="two-factor-header">
+    {% if wizard.steps.current == 'auth' %}
+        <h1 class="two-factor-title">
+            <i class="bi bi-box-arrow-in-right"></i>
+            Login to TerraScope
+        </h1>
+        <p class="two-factor-subtitle">
+            Enter your credentials to continue
+        </p>
+    {% else %}
+        <h1 class="two-factor-title">
+            <i class="bi bi-shield-check"></i>
+            Two-Factor Authentication
+        </h1>
+        <p class="two-factor-subtitle">
+            Enter your authentication code
+        </p>
+    {% endif %}
+</div>
+
+{% if wizard.form.errors %}
     <h1 class="two-factor-title">
         <i class="bi bi-shield-check"></i>
         Two-Factor Authentication
@@ -29,6 +49,26 @@
             <label class="form-label" for="{{ field.id_for_label }}">
                 {{ field.label }}
             </label>
+            
+            {% if field.name == 'username' %}
+                <div class="input-group-custom">
+                    <i class="bi bi-person input-icon"></i>
+                    {{ field }}
+                </div>
+            {% elif field.name == 'password' %}
+                <div class="input-group-custom">
+                    <i class="bi bi-lock input-icon"></i>
+                    {{ field }}
+                </div>
+            {% elif field.name == 'otp_token' or field.name == 'token' %}
+                <div class="input-group-custom">
+                    <i class="bi bi-shield-lock input-icon"></i>
+                    {{ field }}
+                </div>
+            {% else %}
+                {{ field }}
+            {% endif %}
+            
             {% if field.name == 'otp_token' %}
                 <input type="text" 
                        name="{{ field.name }}" 
@@ -55,6 +95,7 @@
         </div>
     {% endfor %}
 
+    {% if wizard.steps.current == 'token' %}
     <div class="info-box">
         <p>
             <i class="bi bi-phone"></i>
@@ -62,9 +103,18 @@
         </p>
     </div>
 
+    {% endif %}
     <div class="btn-group">
         <button type="submit" class="btn btn-primary">
             <i class="bi bi-arrow-right-circle"></i>
+            {% if wizard.steps.current == 'auth' %}
+                Continue
+            {% else %}
+                Verify & Login
+            {% endif %}
+        </button>
+        
+        <a href="{% url 'home' %}" class="btn btn-cancel">
             Verify & Login
         </button>
         
@@ -74,4 +124,83 @@
         </a>
     </div>
 </form>
+
+{% if wizard.steps.current == 'auth' %}
+<div class="register-link">
+    <p>Don't have an account? <a href="{% url 'register' %}" class="link-primary">Create Account</a></p>
+</div>
+{% endif %}
+
+<style>
+    .input-group-custom {
+        position: relative;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 1.25rem;
+        pointer-events: none;
+        z-index: 2;
+    }
+    
+    .input-group-custom input,
+    .input-group-custom select,
+    .input-group-custom textarea {
+        padding-left: 3rem !important;
+    }
+    
+    /* Style Django-rendered form fields */
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="number"],
+    select,
+    textarea {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: var(--text-light);
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    input:focus,
+    select:focus,
+    textarea:focus {
+        outline: none;
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .register-link {
+        text-align: center;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .register-link p {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        margin: 0;
+    }
+    
+    .link-primary {
+        color: var(--primary-blue);
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.3s ease;
+    }
+    
+    .link-primary:hover {
+        color: var(--secondary-blue);
+        text-decoration: underline;
+    }
+</style>
 {% endblock %}

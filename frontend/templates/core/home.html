@@ -127,4 +127,53 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+        .hero-section {
+            padding: 3rem 1rem !important;
+        }
+        
+        .hero-title {
+            font-size: 2rem !important;
+        }
+        
+        .hero-subtitle {
+            font-size: 1rem !important;
+        }
+        
+        .products-section {
+            padding: 2rem 1rem !important;
+        }
+        
+        .products-section h2 {
+            font-size: 1.8rem !important;
+        }
+        
+        .products-section > div:first-of-type {
+            grid-template-columns: 1fr !important;
+        }
+        
+        .btn-view-details {
+            width: 100% !important;
+            margin-right: 0 !important;
+            margin-bottom: 0.5rem !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .hero-title {
+            font-size: 1.5rem !important;
+        }
+        
+        .hero-subtitle {
+            font-size: 0.9rem !important;
+        }
+        
+        .products-section h2 {
+            font-size: 1.5rem !important;
+        }
+    }
+</style>
 {% endblock %}

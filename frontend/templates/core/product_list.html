@@ -73,4 +73,52 @@
         {% endfor %}
     </div>
 </div>
+
+<style>
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+        .products-container {
+            padding: 1rem !important;
+        }
+        
+        .products-header h1 {
+            font-size: 2rem !important;
+        }
+        
+        .products-header p {
+            font-size: 1rem !important;
+        }
+        
+        .products-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1.5rem !important;
+        }
+        
+        .product-card {
+            padding: 1.5rem !important;
+        }
+        
+        .product-card h2 {
+            font-size: 1.5rem !important;
+        }
+        
+        .product-card > div:nth-child(4) > div:first-child {
+            font-size: 2rem !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .products-header h1 {
+            font-size: 1.5rem !important;
+        }
+        
+        .product-card {
+            padding: 1.25rem !important;
+        }
+        
+        .product-card h2 {
+            font-size: 1.3rem !important;
+        }
+    }
+</style>
 {% endblock %}

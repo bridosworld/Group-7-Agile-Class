@@ -59,6 +59,14 @@ def create_checkout_session(request, product_id):
                 'Payment system is not configured. Please contact the administrator.'
             )
             return redirect('product_detail', pk=product_id)
+        
+        # Check if Stripe is configured
+        if not settings.STRIPE_SECRET_KEY or settings.STRIPE_SECRET_KEY == '':
+            messages.error(
+                request, 
+                'Payment system is not configured. Please contact the administrator.'
+            )
+            return redirect('product_detail', pk=product_id)
 
         # Calculate price based on duration
         if duration == '10_minutes':
@@ -574,62 +582,63 @@ def api_tokens(request):
     
     return render(request, 'core/api_tokens.html', context)
 
-@login_required
-def generate_token(request):
-    """Generate a new API token"""
-    if request.method == 'POST':
-        token_name = request.POST.get('token_name', '').strip()
-        expiry_days = int(request.POST.get('expiry_days', 365))
-        
-        if not token_name:
-            messages.error(request, 'Token name is required')
-            return redirect('api_tokens')
-        
-        if len(token_name) > 100:
-            messages.error(request, 'Token name must be less than 100 characters')
-            return redirect('api_tokens')
-        
-        # Check if token with same name exists
-        if UserToken.objects.filter(user=request.user, name=token_name, is_active=True).exists():
-            messages.error(request, 'A token with this name already exists')
-            return redirect('api_tokens')
-        
-        try:
-            token, user_token = UserToken.generate_jwt(request.user, token_name, expiry_days)
-            messages.success(request, f'Token "{token_name}" generated successfully!')
-            
-            # Store token in session for display (only shown once)
-            request.session['new_token'] = token
-            request.session['new_token_id'] = user_token.id
-            
-            return redirect('api_tokens')
-        
-        except Exception as e:
-            messages.error(request, f'Error generating token: {str(e)}')
-            return redirect('api_tokens')
-    
-    return redirect('api_tokens')
 
 @login_required
-def revoke_token(request, token_id):
-    """Revoke an API token"""
-    if request.method == 'POST':
-        user_token = get_object_or_404(UserToken, id=token_id, user=request.user)
-        user_token.is_active = False
-        user_token.save()
-        messages.success(request, f'Token "{user_token.name}" has been revoked')
+def profile(request):
+    """View and edit user profile"""
+    profile = request.user.profile
     
-    return redirect('api_tokens')
-
-@login_required
-def delete_token(request, token_id):
-    """Delete an API token"""
     if request.method == 'POST':
-        user_token = get_object_or_404(UserToken, id=token_id, user=request.user)
-        token_name = user_token.name
-        user_token.delete()
-        messages.success(request, f'Token "{token_name}" has been deleted')
+        # Update user info
+        request.user.first_name = request.POST.get('first_name', '')
+        request.user.last_name = request.POST.get('last_name', '')
+        request.user.email = request.POST.get('email', '')
+        request.user.save()
+        
+        # Update profile info
+        profile.phone_number = request.POST.get('phone_number', '')
+        profile.company = request.POST.get('company', '')
+        profile.job_title = request.POST.get('job_title', '')
+        profile.bio = request.POST.get('bio', '')
+        
+        # Address
+        profile.address_line1 = request.POST.get('address_line1', '')
+        profile.address_line2 = request.POST.get('address_line2', '')
+        profile.city = request.POST.get('city', '')
+        profile.state = request.POST.get('state', '')
+        profile.country = request.POST.get('country', '')
+        profile.postal_code = request.POST.get('postal_code', '')
+        
+        # Settings
+        profile.timezone = request.POST.get('timezone', 'UTC')
+        profile.language = request.POST.get('language', 'en')
+        profile.email_notifications = request.POST.get('email_notifications') == 'on'
+        profile.usage_alerts = request.POST.get('usage_alerts') == 'on'
+        profile.marketing_emails = request.POST.get('marketing_emails') == 'on'
+        
+        # Handle avatar upload - check if file was actually uploaded
+        if request.FILES.get('avatar'):
+            # Delete old avatar if exists
+            if profile.avatar:
+                try:
+                    profile.avatar.delete(save=False)
+                except:
+                    pass
+            profile.avatar = request.FILES['avatar']
+            messages.success(request, 'Profile picture updated successfully!')
+        
+        profile.save()
+        
+        messages.success(request, 'Profile updated successfully!')
+        return redirect('profile')
     
+    context = {
+        'profile': profile,
+        'user': request.user,
+    }
+    
+    return render(request, 'core/profile.html', context)
+=======
     return redirect('api_tokens')
 
 @login_required
