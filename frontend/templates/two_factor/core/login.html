@@ -3,16 +3,26 @@
 
 {% block two_factor_content %}
 <div class="two-factor-header">
-    <h1 class="two-factor-title">
-        <i class="bi bi-shield-check"></i>
-        Two-Factor Authentication
-    </h1>
-    <p class="two-factor-subtitle">
-        Enter your authentication code
-    </p>
+    {% if wizard.steps.current == 'auth' %}
+        <h1 class="two-factor-title">
+            <i class="bi bi-box-arrow-in-right"></i>
+            Login to TerraScope
+        </h1>
+        <p class="two-factor-subtitle">
+            Enter your credentials to continue
+        </p>
+    {% else %}
+        <h1 class="two-factor-title">
+            <i class="bi bi-shield-check"></i>
+            Two-Factor Authentication
+        </h1>
+        <p class="two-factor-subtitle">
+            Enter your authentication code
+        </p>
+    {% endif %}
 </div>
 
-{% if form.errors %}
+{% if wizard.form.errors %}
     <div class="error-message">
         <i class="bi bi-exclamation-triangle"></i>
         Please correct the errors below.
@@ -29,19 +39,26 @@
             <label class="form-label" for="{{ field.id_for_label }}">
                 {{ field.label }}
             </label>
-            {% if field.name == 'otp_token' %}
-                <input type="text" 
-                       name="{{ field.name }}" 
-                       id="{{ field.id_for_label }}"
-                       class="form-control"
-                       placeholder="Enter 6-digit code"
-                       maxlength="6"
-                       autocomplete="off"
-                       autofocus
-                       required>
+            
+            {% if field.name == 'username' %}
+                <div class="input-group-custom">
+                    <i class="bi bi-person input-icon"></i>
+                    {{ field }}
+                </div>
+            {% elif field.name == 'password' %}
+                <div class="input-group-custom">
+                    <i class="bi bi-lock input-icon"></i>
+                    {{ field }}
+                </div>
+            {% elif field.name == 'otp_token' or field.name == 'token' %}
+                <div class="input-group-custom">
+                    <i class="bi bi-shield-lock input-icon"></i>
+                    {{ field }}
+                </div>
             {% else %}
                 {{ field }}
             {% endif %}
+            
             {% if field.errors %}
                 <div class="error-message" style="margin-top: 0.5rem;">
                     {{ field.errors }}
@@ -55,23 +72,108 @@
         </div>
     {% endfor %}
 
+    {% if wizard.steps.current == 'token' %}
     <div class="info-box">
         <p>
             <i class="bi bi-phone"></i>
             Open your authenticator app and enter the 6-digit code displayed for this account.
         </p>
     </div>
+    {% endif %}
 
     <div class="btn-group">
         <button type="submit" class="btn btn-primary">
             <i class="bi bi-arrow-right-circle"></i>
-            Verify & Login
+            {% if wizard.steps.current == 'auth' %}
+                Continue
+            {% else %}
+                Verify & Login
+            {% endif %}
         </button>
         
-        <a href="{% url 'login' %}" class="btn btn-cancel">
+        <a href="{% url 'home' %}" class="btn btn-cancel">
             <i class="bi bi-x-circle"></i>
             Cancel
         </a>
     </div>
 </form>
+
+{% if wizard.steps.current == 'auth' %}
+<div class="register-link">
+    <p>Don't have an account? <a href="{% url 'register' %}" class="link-primary">Create Account</a></p>
+</div>
+{% endif %}
+
+<style>
+    .input-group-custom {
+        position: relative;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 1.25rem;
+        pointer-events: none;
+        z-index: 2;
+    }
+    
+    .input-group-custom input,
+    .input-group-custom select,
+    .input-group-custom textarea {
+        padding-left: 3rem !important;
+    }
+    
+    /* Style Django-rendered form fields */
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="number"],
+    select,
+    textarea {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: var(--text-light);
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    input:focus,
+    select:focus,
+    textarea:focus {
+        outline: none;
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .register-link {
+        text-align: center;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .register-link p {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        margin: 0;
+    }
+    
+    .link-primary {
+        color: var(--primary-blue);
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.3s ease;
+    }
+    
+    .link-primary:hover {
+        color: var(--secondary-blue);
+        text-decoration: underline;
+    }
+</style>
 {% endblock %}

@@ -560,3 +560,60 @@ def api_tokens(request):
     }
     
     return render(request, 'core/api_tokens.html', context)
+
+
+@login_required
+def profile(request):
+    """View and edit user profile"""
+    profile = request.user.profile
+    
+    if request.method == 'POST':
+        # Update user info
+        request.user.first_name = request.POST.get('first_name', '')
+        request.user.last_name = request.POST.get('last_name', '')
+        request.user.email = request.POST.get('email', '')
+        request.user.save()
+        
+        # Update profile info
+        profile.phone_number = request.POST.get('phone_number', '')
+        profile.company = request.POST.get('company', '')
+        profile.job_title = request.POST.get('job_title', '')
+        profile.bio = request.POST.get('bio', '')
+        
+        # Address
+        profile.address_line1 = request.POST.get('address_line1', '')
+        profile.address_line2 = request.POST.get('address_line2', '')
+        profile.city = request.POST.get('city', '')
+        profile.state = request.POST.get('state', '')
+        profile.country = request.POST.get('country', '')
+        profile.postal_code = request.POST.get('postal_code', '')
+        
+        # Settings
+        profile.timezone = request.POST.get('timezone', 'UTC')
+        profile.language = request.POST.get('language', 'en')
+        profile.email_notifications = request.POST.get('email_notifications') == 'on'
+        profile.usage_alerts = request.POST.get('usage_alerts') == 'on'
+        profile.marketing_emails = request.POST.get('marketing_emails') == 'on'
+        
+        # Handle avatar upload - check if file was actually uploaded
+        if request.FILES.get('avatar'):
+            # Delete old avatar if exists
+            if profile.avatar:
+                try:
+                    profile.avatar.delete(save=False)
+                except:
+                    pass
+            profile.avatar = request.FILES['avatar']
+            messages.success(request, 'Profile picture updated successfully!')
+        
+        profile.save()
+        
+        messages.success(request, 'Profile updated successfully!')
+        return redirect('profile')
+    
+    context = {
+        'profile': profile,
+        'user': request.user,
+    }
+    
+    return render(request, 'core/profile.html', context)

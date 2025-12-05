@@ -56,6 +56,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.SubscriptionExpiryMiddleware',
+    'core.middleware.Enforce2FAMiddleware',
 ]
 
 ROOT_URLCONF = 'terrascope.urls'
@@ -122,11 +123,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-# Authentication settings
-LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'dashboard'
-LOGOUT_REDIRECT_URL = 'home'  # This makes logout redirect to homepage
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
@@ -154,8 +150,12 @@ PAYMENT_CANCEL_URL = 'http://127.0.0.1:8000/payment/cancel/'
 TWO_FACTOR_PATCH_ADMIN = True
 TWO_FACTOR_CALL_GATEWAY = None
 TWO_FACTOR_SMS_GATEWAY = None
-LOGIN_URL = 'account/login/'
+LOGIN_URL = 'two_factor:login'
 LOGIN_REDIRECT_URL = 'dashboard'
+LOGOUT_REDIRECT_URL = 'home'
+
+# OTP Settings - increase tolerance for time drift
+OTP_TOTP_TOLERANCE = 2  # Allow 2 steps before/after (60 seconds window total)
 
 # JWT Configuration
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-super-secret-jwt-key-change-in-production')

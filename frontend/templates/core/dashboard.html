@@ -371,13 +371,41 @@
     }
 
     /* Responsive */
+    @media (max-width: 992px) {
+        .dashboard-container {
+            padding: 1.5rem;
+        }
+
+        .dashboard-title {
+            font-size: 2rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
     @media (max-width: 768px) {
         .dashboard-container {
             padding: 1rem;
         }
 
+        .dashboard-title {
+            font-size: 1.8rem;
+        }
+
+        .dashboard-subtitle {
+            font-size: 1rem;
+        }
+
         .stats-grid {
             grid-template-columns: 1fr;
+        }
+
+        /* Force stats cards to stack on mobile */
+        div[style*="grid-template-columns: repeat(5, 1fr)"] {
+            grid-template-columns: 1fr !important;
+            gap: 0.75rem !important;
         }
 
         .table-content {
@@ -387,6 +415,44 @@
         th, td {
             padding: 0.75rem 1rem;
             font-size: 0.85rem;
+        }
+
+        .chart-container {
+            height: 250px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .dashboard-container {
+            padding: 0.75rem;
+        }
+
+        .dashboard-title {
+            font-size: 1.5rem;
+        }
+
+        .dashboard-subtitle {
+            font-size: 0.9rem;
+        }
+
+        .chart-container {
+            height: 200px;
+        }
+
+        .chart-card {
+            padding: 1rem;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
         }
     }
 </style>
@@ -403,89 +469,79 @@
         <p class="dashboard-subtitle">Welcome back! Here's your subscription overview and usage analytics.</p>
     </div>
 
-    <!-- Stats Grid -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+    <!-- Stats Grid - Single Row -->
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 3rem;">
         <!-- TOTAL SPENT -->
-        <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05)); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 20px; padding: 1.5rem; transition: transform 0.3s; cursor: pointer;"
+        <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05)); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px; padding: 1rem; transition: transform 0.3s; cursor: pointer;"
              onmouseover="this.style.transform='translateY(-5px)'"
              onmouseout="this.style.transform='translateY(0)'">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-currency-pound" style="font-size: 1.5rem; color: white;"></i>
-                </div>
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                <i class="bi bi-currency-pound" style="font-size: 1.25rem; color: white;"></i>
             </div>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
                 Total Spent
             </div>
-            <div style="font-size: 2rem; font-weight: 700; color: var(--text-light);">
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-light);">
                 £{{ total_spent|floatformat:2 }}
             </div>
         </div>
 
         <!-- ACTIVE SUBSCRIPTIONS -->
-        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05)); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 20px; padding: 1.5rem; transition: transform 0.3s; cursor: pointer;"
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05)); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 1rem; transition: transform 0.3s; cursor: pointer;"
              onmouseover="this.style.transform='translateY(-5px)'"
              onmouseout="this.style.transform='translateY(0)'">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-check-circle" style="font-size: 1.5rem; color: white;"></i>
-                </div>
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                <i class="bi bi-check-circle" style="font-size: 1.25rem; color: white;"></i>
             </div>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
                 Active Subscriptions
             </div>
-            <div style="font-size: 2rem; font-weight: 700; color: var(--text-light);">
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-light);">
                 {{ active_subscriptions }}
             </div>
         </div>
 
-        <!-- EXPIRED SUBSCRIPTIONS (NEW) -->
-        <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05)); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 20px; padding: 1.5rem; transition: transform 0.3s; cursor: pointer;"
+        <!-- EXPIRED SUBSCRIPTIONS -->
+        <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05)); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 1rem; transition: transform 0.3s; cursor: pointer;"
              onmouseover="this.style.transform='translateY(-5px)'"
              onmouseout="this.style.transform='translateY(0)'">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-x-circle" style="font-size: 1.5rem; color: white;"></i>
-                </div>
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                <i class="bi bi-x-circle" style="font-size: 1.25rem; color: white;"></i>
             </div>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
                 Expired Subscriptions
             </div>
-            <div style="font-size: 2rem; font-weight: 700; color: var(--text-light);">
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-light);">
                 {{ expired_subscriptions }}
             </div>
         </div>
 
         <!-- TOTAL API CALLS -->
-        <div style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.05)); border: 1px solid rgba(251, 191, 36, 0.2); border-radius: 20px; padding: 1.5rem; transition: transform 0.3s; cursor: pointer;"
+        <div style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.05)); border: 1px solid rgba(251, 191, 36, 0.2); border-radius: 12px; padding: 1rem; transition: transform 0.3s; cursor: pointer;"
              onmouseover="this.style.transform='translateY(-5px)'"
              onmouseout="this.style.transform='translateY(0)'">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #fbbf24, #f59e0b); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-lightning-charge" style="font-size: 1.5rem; color: white;"></i>
-                </div>
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #fbbf24, #f59e0b); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                <i class="bi bi-lightning-charge" style="font-size: 1.25rem; color: white;"></i>
             </div>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
                 Total API Calls
             </div>
-            <div style="font-size: 2rem; font-weight: 700; color: var(--text-light);">
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-light);">
                 {{ total_api_calls }}
             </div>
         </div>
 
-        <!-- DATA USED (Move to second row on mobile) -->
-        <div style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.05)); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 20px; padding: 1.5rem; transition: transform 0.3s; cursor: pointer;"
+        <!-- DATA USED -->
+        <div style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.05)); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 12px; padding: 1rem; transition: transform 0.3s; cursor: pointer;"
              onmouseover="this.style.transform='translateY(-5px)'"
              onmouseout="this.style.transform='translateY(0)'">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-database" style="font-size: 1.5rem; color: white;"></i>
-                </div>
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                <i class="bi bi-database" style="font-size: 1.25rem; color: white;"></i>
             </div>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
                 Data Used
             </div>
-            <div style="font-size: 2rem; font-weight: 700; color: var(--text-light);">
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-light);">
                 {{ total_data_used|floatformat:2 }} MB
             </div>
         </div>
