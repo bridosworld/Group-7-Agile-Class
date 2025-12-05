@@ -1,0 +1,80 @@
+{% extends 'two_factor/_base.html' %}
+{% load i18n %}
+
+{% block two_factor_content %}
+<div class="two-factor-header">
+    <h1 class="two-factor-title">
+        <i class="bi bi-gear"></i>
+        Manage Two-Factor Authentication
+    </h1>
+    <p class="two-factor-subtitle">
+        Your account security settings
+    </p>
+</div>
+
+{% if user.totpdevice_set.exists %}
+    <div class="success-message">
+        <i class="bi bi-check-circle-fill"></i>
+        Two-factor authentication is <strong>enabled</strong> on your account.
+    </div>
+
+    <div class="info-box">
+        <p>
+            <i class="bi bi-shield-check"></i>
+            Your account is protected with two-factor authentication using Google Authenticator.
+        </p>
+    </div>
+
+    <div style="margin-top: 2rem;">
+        <h4 style="color: var(--text-light); font-weight: 600; margin-bottom: 1rem;">
+            <i class="bi bi-key"></i>
+            Backup Codes
+        </h4>
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">
+            Generate backup codes that you can use if you lose access to your authenticator device.
+        </p>
+        <a href="{% url 'two_factor:backup_tokens' %}" class="btn btn-secondary" style="display: inline-flex;">
+            <i class="bi bi-file-text"></i>
+            View Backup Codes
+        </a>
+    </div>
+
+    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+        <h4 style="color: #ef4444; font-weight: 600; margin-bottom: 1rem;">
+            <i class="bi bi-exclamation-triangle"></i>
+            Disable Two-Factor Authentication
+        </h4>
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">
+            This will remove the extra security layer from your account.
+        </p>
+        <a href="{% url 'two_factor:disable' %}" class="btn btn-cancel" style="display: inline-flex;">
+            <i class="bi bi-shield-x"></i>
+            Disable 2FA
+        </a>
+    </div>
+
+{% else %}
+    <div class="info-box">
+        <p>
+            <i class="bi bi-info-circle"></i>
+            Two-factor authentication is currently <strong>not enabled</strong> on your account.
+        </p>
+    </div>
+
+    <p style="color: var(--text-muted); margin: 2rem 0;">
+        Enable two-factor authentication to add an extra layer of security to your account. You'll need to enter a code from your phone in addition to your password when logging in.
+    </p>
+
+    <a href="{% url 'two_factor:setup' %}" class="btn btn-primary" style="display: inline-flex;">
+        <i class="bi bi-shield-plus"></i>
+        Enable Two-Factor Authentication
+    </a>
+{% endif %}
+
+<div class="btn-group" style="margin-top: 3rem;">
+    <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i>
+        Back to Dashboard
+    </a>
+</div>
+{% endblock %}

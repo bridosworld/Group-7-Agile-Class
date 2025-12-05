@@ -1,0 +1,54 @@
+{% extends 'two_factor/_base.html' %}
+{% load i18n %}
+
+{% block two_factor_content %}
+<div class="two-factor-header">
+    <h1 class="two-factor-title">
+        <i class="bi bi-key"></i>
+        Backup Codes
+    </h1>
+    <p class="two-factor-subtitle">
+        Save these codes in a safe place
+    </p>
+</div>
+
+<div class="info-box">
+    <p>
+        <i class="bi bi-exclamation-circle"></i>
+        <strong>Important:</strong> Each backup code can only be used once. Store these codes securely - they can be used to access your account if you lose your authenticator device.
+    </p>
+</div>
+
+<div class="backup-codes">
+    <h4>
+        <i class="bi bi-file-text"></i>
+        Your Backup Codes
+    </h4>
+    <div class="backup-codes-grid">
+        {% for token in tokens %}
+            <div style="padding: 0.5rem; background: rgba(255, 255, 255, 0.05); border-radius: 6px;">
+                {{ token.token }}
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="info-box" style="background: rgba(245, 158, 11, 0.1); border-color: #f59e0b;">
+    <p style="color: #f59e0b;">
+        <i class="bi bi-printer"></i>
+        We recommend printing these codes or saving them in a password manager.
+    </p>
+</div>
+
+<div class="btn-group">
+    <button onclick="window.print()" class="btn btn-secondary">
+        <i class="bi bi-printer"></i>
+        Print Codes
+    </button>
+    
+    <a href="{% url 'two_factor:profile' %}" class="btn btn-primary">
+        <i class="bi bi-check-circle"></i>
+        Done
+    </a>
+</div>
+{% endblock %}

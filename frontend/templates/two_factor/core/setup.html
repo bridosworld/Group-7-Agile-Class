@@ -1,0 +1,113 @@
+{% extends 'two_factor/_base.html' %}
+{% load i18n %}
+
+{% block two_factor_content %}
+<div class="two-factor-header">
+    <h1 class="two-factor-title">
+        <i class="bi bi-shield-lock"></i>
+        Enable Two-Factor Authentication
+    </h1>
+    <p class="two-factor-subtitle">
+        Add an extra layer of security to your account
+    </p>
+</div>
+
+<form method="post" action="">
+    {% csrf_token %}
+    
+    {% if wizard.steps.step1 == 0 %}
+        <!-- Step 1: Choose Method -->
+        <div class="info-box">
+            <p>
+                <i class="bi bi-info-circle"></i>
+                To start using two-factor authentication, please scan the QR code below with your smartphone using Google Authenticator or a compatible app.
+            </p>
+        </div>
+
+        <div class="qr-code-container">
+            <img src="{{ QR_URL }}" alt="QR Code" />
+        </div>
+
+        <div class="totp-secret">
+            <div class="totp-secret-label">Or enter this secret manually:</div>
+            <div class="totp-secret-value">{{ wizard.form.secret_key.value }}</div>
+        </div>
+
+        {{ wizard.management_form }}
+        
+        {% for field in wizard.form %}
+            {% if field.name != 'secret_key' %}
+                <div class="form-group">
+                    <label class="form-label" for="{{ field.id_for_label }}">
+                        {{ field.label }}
+                    </label>
+                    <input type="{{ field.field.widget.input_type }}" 
+                           name="{{ field.name }}" 
+                           id="{{ field.id_for_label }}"
+                           class="form-control"
+                           value="{{ field.value|default:'' }}"
+                           {% if field.field.required %}required{% endif %}>
+                    {% if field.errors %}
+                        <div class="error-message" style="margin-top: 0.5rem;">
+                            {{ field.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+
+        <div class="info-box">
+            <p>
+                <strong>Note:</strong> After enabling 2FA, you'll need to enter a code from your authenticator app every time you log in.
+            </p>
+        </div>
+
+    {% else %}
+        <!-- Other steps -->
+        {{ wizard.management_form }}
+        
+        {% for field in wizard.form %}
+            <div class="form-group">
+                <label class="form-label" for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                </label>
+                {{ field }}
+                {% if field.errors %}
+                    <div class="error-message" style="margin-top: 0.5rem;">
+                        {{ field.errors }}
+                    </div>
+                {% endif %}
+                {% if field.help_text %}
+                    <small style="color: var(--text-muted); font-size: 0.85rem;">
+                        {{ field.help_text }}
+                    </small>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="btn-group">
+        {% if wizard.steps.prev %}
+            <button type="submit" name="wizard_goto_step" value="{{ wizard.steps.prev }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i>
+                Back
+            </button>
+        {% endif %}
+        
+        <button type="submit" class="btn btn-primary">
+            {% if wizard.steps.last %}
+                <i class="bi bi-check-circle"></i>
+                Enable 2FA
+            {% else %}
+                Next
+                <i class="bi bi-arrow-right"></i>
+            {% endif %}
+        </button>
+        
+        <a href="{% url 'dashboard' %}" class="btn btn-cancel">
+            <i class="bi bi-x-circle"></i>
+            Cancel
+        </a>
+    </div>
+</form>
+{% endblock %}

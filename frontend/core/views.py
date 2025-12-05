@@ -51,6 +51,14 @@ def create_checkout_session(request, product_id):
                 'Payment system is not configured. Please contact the administrator.'
             )
             return redirect('product_detail', pk=product_id)
+        
+        # Check if Stripe is configured
+        if not settings.STRIPE_SECRET_KEY or settings.STRIPE_SECRET_KEY == '':
+            messages.error(
+                request, 
+                'Payment system is not configured. Please contact the administrator.'
+            )
+            return redirect('product_detail', pk=product_id)
 
         # Calculate price based on duration
         if duration == '10_minutes':
@@ -295,6 +303,7 @@ def subscription_detail(request, pk):
     # Check if user can generate tokens
     can_generate_token = (
         subscription.status == 'active' and 
+        subscription.expires_at > now
         subscription.expires_at >
     # Check if user can generate tokens
     can_generate_token = (

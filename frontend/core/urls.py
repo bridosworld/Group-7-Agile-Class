@@ -35,6 +35,11 @@ urlpatterns = [
     path('token/<int:token_id>/revoke/', views.revoke_token, name='revoke_token'),
     path('token/<int:token_id>/refresh/', views.refresh_token, name='refresh_token'),
 
+    # Token Management URLs
+    path('subscription/<int:subscription_id>/generate-token/', views.generate_token, name='generate_token'),
+    path('token/<int:token_id>/revoke/', views.revoke_token, name='revoke_token'),
+    path('token/<int:token_id>/refresh/', views.refresh_token, name='refresh_token'),
+
     # API Tokens
     path('api-tokens/', views.api_tokens, name='api_tokens'),
     path('api-tokens/generate/', views.generate_token, name='generate_token'),
