@@ -481,51 +481,36 @@
             <div class="pricing-card">
                 <div class="pricing-header">
                     <div class="starting-from">Starting From</div>
-                    <div class="price-display">£{{ product.price_1_month|floatformat:2 }}</div>
-                    <div class="price-period">/month</div>
+                    <div class="price-display">£{{ product.price_10_minutes|floatformat:2 }}</div>
+                    <div class="price-period">/10 minutes</div>
                 </div>
 
                 <!-- Duration Selector -->
                 <div class="duration-selector">
                     <label class="duration-label">Select Duration:</label>
                     <div class="duration-options">
-                        <div class="duration-option selected" data-duration="1" data-price="{{ product.price_1_month }}">
-                            <div class="duration-info">
-                                <div class="duration-icon">
-                                    <i class="bi bi-calendar"></i>
-                                </div>
-                                <div class="duration-text">
-                                    <h4>1 Month</h4>
-                                    <p>Perfect for testing</p>
-                                </div>
-                            </div>
-                            <div class="duration-price">£{{ product.price_1_month|floatformat:2 }}</div>
+                        <div class="pricing-option">
+                            <input type="radio" name="duration" value="10_minutes" checked>
+                            <label>
+                                <strong>10 Minutes</strong> (Demo) - 
+                                £{{ product.price_10_minutes|floatformat:2 }}
+                            </label>
                         </div>
 
-                        <div class="duration-option" data-duration="2" data-price="{{ product.price_2_months }}">
-                            <div class="duration-info">
-                                <div class="duration-icon">
-                                    <i class="bi bi-calendar2"></i>
-                                </div>
-                                <div class="duration-text">
-                                    <h4>2 Months <span class="badge-popular">Popular</span></h4>
-                                    <p>Save 10% compared to monthly</p>
-                                </div>
-                            </div>
-                            <div class="duration-price">£{{ product.price_2_months|floatformat:2 }}</div>
+                        <div class="pricing-option">
+                            <input type="radio" name="duration" value="2_hours">
+                            <label>
+                                <strong>2 Hours</strong> (Demo) - 
+                                £{{ product.price_2_hours|floatformat:2 }}
+                            </label>
                         </div>
 
-                        <div class="duration-option" data-duration="12" data-price="{{ product.price_1_year }}">
-                            <div class="duration-info">
-                                <div class="duration-icon">
-                                    <i class="bi bi-calendar3"></i>
-                                </div>
-                                <div class="duration-text">
-                                    <h4>1 Year <span class="badge-best">Best Value</span></h4>
-                                    <p>Save 20% - 2 months free!</p>
-                                </div>
-                            </div>
-                            <div class="duration-price">£{{ product.price_1_year|floatformat:2 }}</div>
+                        <div class="pricing-option">
+                            <input type="radio" name="duration" value="1_week">
+                            <label>
+                                <strong>1 Week</strong> (Demo) - 
+                                £{{ product.price_1_week|floatformat:2 }}
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -533,7 +518,6 @@
                 <!-- Subscribe Form -->
                 <form action="{% url 'create_checkout_session' product.pk %}" method="post" id="subscribeForm" class="subscribe-form">
                     {% csrf_token %}
-                    <input type="hidden" name="duration" id="selected_duration" value="1">
                     
                     {% if user.is_authenticated %}
                         <button type="submit" class="subscribe-btn" id="subscribeBtn">
@@ -563,7 +547,7 @@
                 <ul class="included-list">
                     <li>
                         <i class="bi bi-lightning-charge-fill"></i>
-                        <span><strong>{{ product.api_calls_limit|intcomma }}</strong> API calls per month</span>
+                        <span><strong>{{ product.api_calls_limit|intcomma }}</strong> API calls per subscription</span>
                     </li>
                     <li>
                         <i class="bi bi-database-fill"></i>
@@ -681,34 +665,10 @@
 
 {% block extra_js %}
 <script>
-    // Duration selection handler
-    const durationOptions = document.querySelectorAll('.duration-option');
-    const selectedDurationInput = document.getElementById('selected_duration');
-    const priceDisplay = document.querySelector('.price-display');
-    const subscribeBtn = document.getElementById('subscribeBtn');
-
-    durationOptions.forEach(option => {
-        option.addEventListener('click', function() {
-            // Remove selected class from all options
-            durationOptions.forEach(opt => opt.classList.remove('selected'));
-            
-            // Add selected class to clicked option
-            this.classList.add('selected');
-            
-            // Update hidden input
-            const duration = this.dataset.duration;
-            const price = this.dataset.price;
-            selectedDurationInput.value = duration;
-            
-            // Update price display
-            priceDisplay.textContent = '£' + parseFloat(price).toFixed(2);
-            
-            console.log('Selected duration:', duration, 'Price:', price);
-        });
-    });
-
     // Form submission handler
     const subscribeForm = document.getElementById('subscribeForm');
+    const subscribeBtn = document.getElementById('subscribeBtn');
+    
     if (subscribeForm) {
         subscribeForm.addEventListener('submit', function(e) {
             // Show loading state
@@ -716,8 +676,6 @@
                 subscribeBtn.disabled = true;
                 subscribeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
             }
-            
-            console.log('Form submitted with duration:', selectedDurationInput.value);
         });
     }
 </script>

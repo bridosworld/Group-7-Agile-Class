@@ -1,10 +1,10 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Product, Subscription, SubscriptionUsage
+from .models import Product, Subscription, SubscriptionUsage, UserToken
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['name', 'price_1_month', 'api_calls_limit', 'data_limit_mb', 'is_active']
+    list_display = ['name', 'price_10_minutes', 'price_2_hours', 'price_1_week', 'api_calls_limit', 'data_limit_mb', 'is_active']
     list_filter = ['is_active']
     search_fields = ['name', 'description']
     
@@ -13,7 +13,7 @@ class ProductAdmin(admin.ModelAdmin):
             'fields': ('name', 'short_description', 'description', 'image', 'is_active')
         }),
         ('Pricing', {
-            'fields': ('price_1_month', 'price_2_months', 'price_1_year'),
+            'fields': ('price_10_minutes', 'price_2_hours', 'price_1_week'),
             'description': 'Set pricing for different subscription durations'
         }),
         ('API Limits', {
@@ -50,3 +50,23 @@ class SubscriptionUsageAdmin(admin.ModelAdmin):
     list_filter = ['date']
     search_fields = ['subscription__user__username']
     date_hierarchy = 'date'
+
+
+@admin.register(UserToken)
+class UserTokenAdmin(admin.ModelAdmin):
+    list_display = ['name', 'user', 'subscription', 'created_at', 'expires_at', 'is_active', 'last_used']
+    list_filter = ['is_active', 'created_at', 'expires_at']
+    search_fields = ['user__username', 'name', 'subscription__product__name']
+    readonly_fields = ['token', 'token_id', 'created_at', 'last_used']
+    
+    fieldsets = (
+        ('Token Information', {
+            'fields': ('name', 'token', 'token_id')
+        }),
+        ('Associations', {
+            'fields': ('user', 'subscription')
+        }),
+        ('Status', {
+            'fields': ('is_active', 'created_at', 'expires_at', 'last_used')
+        }),
+    )
