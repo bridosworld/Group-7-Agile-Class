@@ -593,3 +593,345 @@ def copy_token(request, token_id):
         'success': False,
         'error': 'Invalid request'
     }, status=400)
+
+import jwt
+from django.views.decorators.http import require_http_methods
+from functools import wraps
+from django.contrib.auth.models import User
+
+
+# ========================================
+# JWT API AUTHENTICATION DECORATOR
+# ========================================
+
+def require_api_jwt(view_func):
+    """Decorator to validate JWT token from Authorization header"""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        auth_header = request.headers.get('Authorization', '')
+        
+        if not auth_header.startswith('Bearer '):
+            return JsonResponse({
+                'error': 'Missing or invalid Authorization header',
+                'detail': 'Use header: Authorization: Bearer <your-token>',
+                'code': 'AUTH_MISSING'
+            }, status=401)
+        
+        token = auth_header[7:]  # Remove 'Bearer ' prefix
+        
+        try:
+            # Decode JWT using Django secret key
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+            
+            # Verify token is still active in database
+            try:
+                user_token = UserToken.objects.get(token=token, is_active=True)
+                if user_token.is_expired:
+                    return JsonResponse({
+                        'error': 'Token has expired',
+                        'code': 'TOKEN_EXPIRED',
+                        'expires_at': user_token.expires_at.isoformat()
+                    }, status=401)
+            except UserToken.DoesNotExist:
+                return JsonResponse({
+                    'error': 'Token is invalid or revoked',
+                    'code': 'TOKEN_REVOKED'
+                }, status=401)
+            
+            # Attach user info to request
+            request.user_id = payload['user_id']
+            request.username = payload['username']
+            request.email = payload['email']
+            request.api_token = user_token
+            
+            # Update last_used timestamp
+            user_token.last_used = timezone.now()
+            user_token.save(update_fields=['last_used'])
+            
+            return view_func(request, *args, **kwargs)
+        
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({
+                'error': 'Token has expired',
+                'code': 'TOKEN_EXPIRED'
+            }, status=401)
+        except jwt.InvalidTokenError as e:
+            return JsonResponse({
+                'error': 'Invalid token',
+                'code': 'TOKEN_INVALID',
+                'detail': str(e)
+            }, status=401)
+        except Exception as e:
+            return JsonResponse({
+                'error': 'Authentication error',
+                'code': 'AUTH_ERROR',
+                'detail': str(e)
+            }, status=500)
+    
+    return wrapper
+
+
+# ========================================
+# API ENDPOINTS (Protected with JWT)
+# ========================================
+
+@require_http_methods(["GET"])
+@require_api_jwt
+@csrf_exempt
+def api_user_profile(request):
+    """
+    Get authenticated user's profile
+    
+    GET /api/profile/
+    Authorization: Bearer <token>
+    """
+    try:
+        user = User.objects.get(id=request.user_id)
+        return JsonResponse({
+            'success': True,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'date_joined': user.date_joined.isoformat(),
+            }
+        }, status=200)
+    except User.DoesNotExist:
+        return JsonResponse({
+            'error': 'User not found',
+            'code': 'USER_NOT_FOUND'
+        }, status=404)
+
+
+@require_http_methods(["GET"])
+@require_api_jwt
+@csrf_exempt
+def api_subscriptions(request):
+    """
+    Get user's active subscriptions
+    
+    GET /api/subscriptions/
+    Authorization: Bearer <token>
+    """
+    subscriptions = Subscription.objects.filter(
+        user_id=request.user_id
+    ).select_related('product')
+    
+    data = {
+        'success': True,
+        'count': subscriptions.count(),
+        'subscriptions': [
+            {
+                'id': sub.id,
+                'product_id': sub.product.id,
+                'product_name': sub.product.name,
+                'status': sub.status,
+                'subscribed_at': sub.subscribed_at.isoformat(),
+                'expires_at': sub.expires_at.isoformat(),
+                'days_until_expiry': sub.days_until_expiry,
+                'usage': {
+                    'api_calls_made': sub.api_calls_made,
+                    'api_calls_limit': sub.api_calls_limit,
+                    'api_usage_percentage': round(sub.usage_percentage, 2),
+                    'data_downloaded_mb': float(sub.data_downloaded_mb),
+                    'data_limit_mb': sub.data_limit_mb,
+                    'data_usage_percentage': round(sub.data_usage_percentage, 2),
+                }
+            }
+            for sub in subscriptions
+        ]
+    }
+    return JsonResponse(data, status=200)
+
+
+@require_http_methods(["GET"])
+@require_api_jwt
+@csrf_exempt
+def api_subscription_detail(request, subscription_id):
+    """
+    Get specific subscription details
+    
+    GET /api/subscriptions/{subscription_id}/
+    Authorization: Bearer <token>
+    """
+    try:
+        subscription = Subscription.objects.select_related('product').get(
+            id=subscription_id,
+            user_id=request.user_id
+        )
+        return JsonResponse({
+            'success': True,
+            'subscription': {
+                'id': subscription.id,
+                'product_id': subscription.product.id,
+                'product_name': subscription.product.name,
+                'product_description': subscription.product.description,
+                'status': subscription.status,
+                'subscribed_at': subscription.subscribed_at.isoformat(),
+                'expires_at': subscription.expires_at.isoformat(),
+                'cancelled_at': subscription.cancelled_at.isoformat() if subscription.cancelled_at else None,
+                'days_until_expiry': subscription.days_until_expiry,
+                'total_cost': float(subscription.total_cost),
+                'duration_months': subscription.duration_months,
+                'usage': {
+                    'api_calls_made': subscription.api_calls_made,
+                    'api_calls_limit': subscription.api_calls_limit,
+                    'api_usage_percentage': round(subscription.usage_percentage, 2),
+                    'data_downloaded_mb': float(subscription.data_downloaded_mb),
+                    'data_limit_mb': subscription.data_limit_mb,
+                    'data_usage_percentage': round(subscription.data_usage_percentage, 2),
+                }
+            }
+        }, status=200)
+    except Subscription.DoesNotExist:
+        return JsonResponse({
+            'error': 'Subscription not found',
+            'code': 'SUBSCRIPTION_NOT_FOUND'
+        }, status=404)
+
+
+@require_http_methods(["GET"])
+@require_api_jwt
+@csrf_exempt
+def api_tokens_list(request):
+    """
+    Get user's API tokens
+    
+    GET /api/tokens/
+    Authorization: Bearer <token>
+    """
+    tokens = UserToken.objects.filter(user_id=request.user_id).order_by('-created_at')
+    
+    data = {
+        'success': True,
+        'count': tokens.count(),
+        'tokens': [
+            {
+                'id': token.id,
+                'name': token.name,
+                'created_at': token.created_at.isoformat(),
+                'expires_at': token.expires_at.isoformat(),
+                'last_used': token.last_used.isoformat() if token.last_used else None,
+                'is_active': token.is_active,
+                'is_expired': token.is_expired,
+                'days_until_expiry': token.days_until_expiry,
+            }
+            for token in tokens
+        ]
+    }
+    return JsonResponse(data, status=200)
+
+
+@require_http_methods(["GET"])
+@require_api_jwt
+@csrf_exempt
+def api_usage_stats(request):
+    """
+    Get user's usage statistics
+    
+    GET /api/usage/
+    Authorization: Bearer <token>
+    """
+    subscriptions = Subscription.objects.filter(user_id=request.user_id)
+    
+    total_api_calls = subscriptions.aggregate(Sum('api_calls_made'))['api_calls_made__sum'] or 0
+    total_data_used = subscriptions.aggregate(Sum('data_downloaded_mb'))['data_downloaded_mb__sum'] or 0
+    active_count = subscriptions.filter(status='active').count()
+    total_spent = subscriptions.aggregate(Sum('total_cost'))['total_cost__sum'] or 0
+    
+    return JsonResponse({
+        'success': True,
+        'statistics': {
+            'total_api_calls': int(total_api_calls),
+            'total_data_used_mb': float(total_data_used),
+            'total_spent_pounds': float(total_spent),
+            'active_subscriptions': active_count,
+            'total_subscriptions': subscriptions.count(),
+        }
+    }, status=200)
+
+
+@require_http_methods(["POST"])
+@require_api_jwt
+@csrf_exempt
+def api_token_refresh(request):
+    """
+    Refresh an expired token (generates new token)
+    
+    POST /api/token-refresh/
+    Authorization: Bearer <current-token>
+    Body: {"token_id": 1}
+    """
+    try:
+        data = json.loads(request.body)
+        token_id = data.get('token_id')
+        
+        if not token_id:
+            return JsonResponse({
+                'error': 'token_id is required',
+                'code': 'MISSING_FIELD'
+            }, status=400)
+        
+        user_token = UserToken.objects.get(id=token_id, user_id=request.user_id)
+        
+        if not user_token.is_expired:
+            return JsonResponse({
+                'error': 'Token is still valid',
+                'code': 'TOKEN_NOT_EXPIRED',
+                'expires_at': user_token.expires_at.isoformat()
+            }, status=400)
+        
+        # Generate new token
+        new_token, updated_token = UserToken.generate_jwt(
+            User.objects.get(id=request.user_id),
+            user_token.name,
+            expiry_days=365
+        )
+        
+        # Delete old token
+        user_token.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Token "{updated_token.name}" refreshed successfully',
+            'new_token': new_token,
+            'expires_at': updated_token.expires_at.isoformat(),
+            'warning': 'Save this token now. You won\'t be able to see it again.'
+        }, status=200)
+    
+    except UserToken.DoesNotExist:
+        return JsonResponse({
+            'error': 'Token not found',
+            'code': 'TOKEN_NOT_FOUND'
+        }, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'error': 'Invalid JSON',
+            'code': 'INVALID_JSON'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'error': str(e),
+            'code': 'ERROR'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+@require_api_jwt
+@csrf_exempt
+def api_health_check(request):
+    """
+    Health check endpoint to verify token validity
+    
+    GET /api/health/
+    Authorization: Bearer <token>
+    """
+    return JsonResponse({
+        'success': True,
+        'status': 'ok',
+        'authenticated_as': request.username,
+        'token_name': request.api_token.name,
+        'token_expires_at': request.api_token.expires_at.isoformat(),
+    }, status=200)
