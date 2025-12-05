@@ -1,7 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
-from datetime import timedelta
+from datetime import datetime, timedelta
+import jwt
+from django.conf import settings
 
 class Product(models.Model):
     name = models.CharField(max_length=200)
@@ -117,3 +119,55 @@ class SubscriptionUsage(models.Model):
         if total > 0:
             return round((self.requests_successful / total) * 100, 2)
         return 100.0
+
+
+class UserToken(models.Model):
+    """Store JWT tokens for API authentication"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_tokens')
+    token = models.TextField(unique=True)
+    name = models.CharField(max_length=100, help_text="Friendly name for this token")
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.name}"
+    
+    @property
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+    
+    @property
+    def days_until_expiry(self):
+        if self.is_expired:
+            return 0
+        delta = self.expires_at - timezone.now()
+        return delta.days
+    
+    @staticmethod
+    def generate_jwt(user, token_name, expiry_days=365):
+        """Generate a new JWT token for the user"""
+        payload = {
+            'user_id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'iat': datetime.utcnow(),
+            'exp': datetime.utcnow() + timedelta(days=expiry_days),
+            'token_name': token_name,
+        }
+        
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+        expires_at = timezone.now() + timedelta(days=expiry_days)
+        
+        user_token = UserToken.objects.create(
+            user=user,
+            token=token,
+            name=token_name,
+            expires_at=expires_at
+        )
+        
+        return token, user_token

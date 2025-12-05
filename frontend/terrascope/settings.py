@@ -142,3 +142,6 @@ STRIPE_WEBHOOK_SECRET = ''  # Optional, for webhooks
 # After payment success, redirect here
 PAYMENT_SUCCESS_URL = 'http://127.0.0.1:8000/payment/success/'
 PAYMENT_CANCEL_URL = 'http://127.0.0.1:8000/payment/cancel/'
+
+# JWT Configuration
+JWT_ALGORITHM = 'HS256'
