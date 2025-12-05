@@ -31,4 +31,13 @@ urlpatterns = [
     path('api-tokens/<int:token_id>/revoke/', views.revoke_token, name='revoke_token'),
     path('api-tokens/<int:token_id>/delete/', views.delete_token, name='delete_token'),
     path('api-tokens/<int:token_id>/copy/', views.copy_token, name='copy_token'),
+
+    # API Endpoints (require JWT token from Authorization header)
+    path('api/health/', views.api_health_check, name='api_health_check'),
+    path('api/profile/', views.api_user_profile, name='api_user_profile'),
+    path('api/subscriptions/', views.api_subscriptions, name='api_subscriptions'),
+    path('api/subscriptions/<int:subscription_id>/', views.api_subscription_detail, name='api_subscription_detail'),
+    path('api/tokens/', views.api_tokens_list, name='api_tokens_list'),
+    path('api/usage/', views.api_usage_stats, name='api_usage_stats'),
+    path('api/token-refresh/', views.api_token_refresh, name='api_token_refresh'),
 ]
