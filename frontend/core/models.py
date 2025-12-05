@@ -83,7 +83,6 @@ def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
         instance.profile.save()
 
-
 class Product(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField()
