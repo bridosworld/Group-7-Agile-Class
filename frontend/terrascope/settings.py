@@ -138,8 +138,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Stripe Configuration
-STRIPE_PUBLIC_KEY = 'pk_test_51SaVBhF8RfmqsdLZK9LAfa4NSRfoRAzS5bhKjzA2KE3OXnfLZJqrbtDOkLoMznJRuZGMkLgHHMxJxrbVZjGRcves00vZGVR6dL'  # Get from Stripe Dashboard
-STRIPE_SECRET_KEY = 'sk_test_51SaVBhF8RfmqsdLZRSc83HGf0mB7gwgfseXWpK5CdQreCYHpPhsOc8yjuRrxrT7bj4ydZaMUlofymghD6O7MvMyR00tP2va8Fl'  # Get from Stripe Dashboard
+STRIPE_PUBLIC_KEY = ''  # Get from Stripe Dashboard
+STRIPE_SECRET_KEY = ''  # Get from Stripe Dashboard
 STRIPE_WEBHOOK_SECRET = ''  # Optional, for webhooks
 
 # After payment success, redirect here
