@@ -4,6 +4,7 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 import jwt
 from django.conf import settings
+import uuid
 
 class Product(models.Model):
     name = models.CharField(max_length=200)
@@ -12,9 +13,9 @@ class Product(models.Model):
     image = models.ImageField(upload_to='products/', blank=True, null=True)
     
     # Pricing
-    price_1_month = models.DecimalField(max_digits=10, decimal_places=2)
-    price_2_months = models.DecimalField(max_digits=10, decimal_places=2)
-    price_1_year = models.DecimalField(max_digits=10, decimal_places=2)
+    price_10_minutes = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="10 Minutes Plan")
+    price_2_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="2 Hours Plan")
+    price_1_week = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="1 Week Plan")
     
     # API Limits
     api_calls_limit = models.IntegerField(default=10000)
@@ -122,52 +123,54 @@ class SubscriptionUsage(models.Model):
 
 
 class UserToken(models.Model):
-    """Store JWT tokens for API authentication"""
+    """API tokens linked to specific subscriptions"""
+    
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_tokens')
+    subscription = models.ForeignKey('Subscription', on_delete=models.CASCADE, related_name='tokens')
+    
+    name = models.CharField(
+        max_length=100, 
+        default="API Token",
+        help_text="User-friendly name for this token"
+    )
     token = models.TextField(unique=True)
-    name = models.CharField(max_length=100, help_text="Friendly name for this token")
+    token_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    
     created_at = models.DateTimeField(auto_now_add=True)
-    last_used = models.DateTimeField(null=True, blank=True)
     expires_at = models.DateTimeField()
     is_active = models.BooleanField(default=True)
+    last_used = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['subscription', 'name'], 
+                name='unique_token_name_per_subscription'
+            )
+        ]
+        indexes = [
+            models.Index(fields=['token']),
+            models.Index(fields=['subscription', 'is_active']),
+        ]
     
     def __str__(self):
-        return f"{self.user.username} - {self.name}"
+        return f"{self.name} - {self.subscription.product.name}"
     
     @property
     def is_expired(self):
-        return timezone.now() > self.expires_at
+        """Check if token is expired"""
+        return timezone.now() > self.expires_at if self.expires_at else False
     
     @property
     def days_until_expiry(self):
-        if self.is_expired:
-            return 0
-        delta = self.expires_at - timezone.now()
-        return delta.days
+        """Calculate days until token expires"""
+        if self.expires_at:
+            delta = self.expires_at - timezone.now()
+            return delta.days if delta.days > 0 else 0
+        return 0
     
-    @staticmethod
-    def generate_jwt(user, token_name, expiry_days=365):
-        """Generate a new JWT token for the user"""
-        payload = {
-            'user_id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'iat': datetime.utcnow(),
-            'exp': datetime.utcnow() + timedelta(days=expiry_days),
-            'token_name': token_name,
-        }
-        
-        token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
-        expires_at = timezone.now() + timedelta(days=expiry_days)
-        
-        user_token = UserToken.objects.create(
-            user=user,
-            token=token,
-            name=token_name,
-            expires_at=expires_at
-        )
-        
-        return token, user_token
+    def mark_as_used(self):
+        """Update last_used timestamp"""
+        self.last_used = timezone.now()
+        self.save(update_fields=['last_used'])

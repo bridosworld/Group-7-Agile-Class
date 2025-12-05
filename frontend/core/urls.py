@@ -25,10 +25,8 @@ urlpatterns = [
     path('subscription/<int:pk>/resume/', views.resume_subscription, name='resume_subscription'),
     path('subscription/<int:pk>/cancel/', views.cancel_subscription, name='cancel_subscription'),
 
-    # API Tokens
-    path('api-tokens/', views.api_tokens, name='api_tokens'),
-    path('api-tokens/generate/', views.generate_token, name='generate_token'),
-    path('api-tokens/<int:token_id>/revoke/', views.revoke_token, name='revoke_token'),
-    path('api-tokens/<int:token_id>/delete/', views.delete_token, name='delete_token'),
-    path('api-tokens/<int:token_id>/copy/', views.copy_token, name='copy_token'),
+    # Token Management URLs
+    path('subscription/<int:subscription_id>/generate-token/', views.generate_token, name='generate_token'),
+    path('token/<int:token_id>/revoke/', views.revoke_token, name='revoke_token'),
+    path('token/<int:token_id>/refresh/', views.refresh_token, name='refresh_token'),
 ]

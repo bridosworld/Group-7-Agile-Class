@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -144,4 +145,6 @@ PAYMENT_SUCCESS_URL = 'http://127.0.0.1:8000/payment/success/'
 PAYMENT_CANCEL_URL = 'http://127.0.0.1:8000/payment/cancel/'
 
 # JWT Configuration
+JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-super-secret-jwt-key-change-in-production')
 JWT_ALGORITHM = 'HS256'
+JWT_TOKEN_LIMIT_PER_SUBSCRIPTION = 5

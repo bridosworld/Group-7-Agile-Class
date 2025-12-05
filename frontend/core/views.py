@@ -10,6 +10,8 @@ from django.contrib import messages
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 import json
+import jwt
+import uuid
 import stripe
 from django.conf import settings
 from .models import Product, Subscription, SubscriptionUsage, UserToken
@@ -40,22 +42,22 @@ def create_checkout_session(request, product_id):
     
     try:
         product = get_object_or_404(Product, pk=product_id, is_active=True)
-        duration = int(request.POST.get('duration', 1))
+        duration = request.POST.get('duration', '10_minutes')
         
         # Calculate price based on duration
-        if duration == 1:
-            amount = float(product.price_1_month)
-            duration_text = "1 Month"
-        elif duration == 2:
-            amount = float(product.price_2_months)
-            duration_text = "2 Months"
-        elif duration == 12:
-            amount = float(product.price_1_year)
-            duration_text = "1 Year"
+        if duration == '10_minutes':
+            amount = float(product.price_10_minutes)
+            duration_text = "10 Minutes"
+        elif duration == '2_hours':
+            amount = float(product.price_2_hours)
+            duration_text = "2 Hours"
+        elif duration == '1_week':
+            amount = float(product.price_1_week)
+            duration_text = "1 Week"
         else:
-            amount = float(product.price_1_month)
-            duration = 1
-            duration_text = "1 Month"
+            amount = float(product.price_10_minutes)
+            duration = '10_minutes'
+            duration_text = "10 Minutes"
         
         # Create Stripe checkout session
         checkout_session = stripe.checkout.Session.create(
@@ -101,7 +103,7 @@ def payment_success(request):
     """Handle successful payment and create subscription"""
     session_id = request.GET.get('session_id')
     product_id = request.GET.get('product_id')
-    duration = int(request.GET.get('duration', 1))
+    duration = request.GET.get('duration', '10_minutes')
     
     if not session_id or not product_id:
         messages.error(request, 'Invalid payment session')
@@ -113,18 +115,25 @@ def payment_success(request):
         if session.payment_status == 'paid':
             product = get_object_or_404(Product, pk=product_id)
             
-            if duration == 1:
-                expires_at = timezone.now() + timedelta(days=30)
-                total_cost = product.price_1_month
-            elif duration == 2:
-                expires_at = timezone.now() + timedelta(days=60)
-                total_cost = product.price_2_months
-            elif duration == 12:
-                expires_at = timezone.now() + timedelta(days=365)
-                total_cost = product.price_1_year
+            # Duration map
+            duration_map = {
+                '10_minutes': timedelta(minutes=10),
+                '2_hours': timedelta(hours=2),
+                '1_week': timedelta(weeks=1)
+            }
+            
+            price_map = {
+                '10_minutes': product.price_10_minutes,
+                '2_hours': product.price_2_hours,
+                '1_week': product.price_1_week
+            }
+            
+            if duration in duration_map:
+                expires_at = timezone.now() + duration_map[duration]
+                total_cost = price_map[duration]
             else:
-                expires_at = timezone.now() + timedelta(days=30)
-                total_cost = product.price_1_month
+                expires_at = timezone.now() + timedelta(minutes=10)
+                total_cost = product.price_10_minutes
             
             subscription = Subscription.objects.create(
                 user=request.user,
@@ -132,7 +141,7 @@ def payment_success(request):
                 status='active',
                 subscribed_at=timezone.now(),
                 expires_at=expires_at,
-                duration_months=duration if duration != 12 else 12,
+                duration_months=1,  # Default to 1 for compatibility
                 total_cost=total_cost,
                 api_calls_limit=product.api_calls_limit,
                 data_limit_mb=product.data_limit_mb,
@@ -240,48 +249,210 @@ def dashboard(request):
 
 @login_required
 def subscription_detail(request, pk):
-    """Display subscription details"""
-    subscription = get_object_or_404(
-        Subscription.objects.select_related('product'),
-        pk=pk,
-        user=request.user
+    """Display subscription details with token management"""
+    subscription = get_object_or_404(Subscription, pk=pk, user=request.user)
+    
+    # Check if user can generate tokens
+    can_generate_token = (
+        subscription.status == 'active' and 
+        subscription.expires_at > timezone.now()
     )
     
-    end_date = timezone.now().date()
-    start_date = end_date - timedelta(days=29)
-    
-    usage_data = SubscriptionUsage.objects.filter(
+    # Get all tokens for this subscription
+    tokens = UserToken.objects.filter(
         subscription=subscription,
-        date__gte=start_date,
-        date__lte=end_date
-    ).order_by('date')
+        is_active=True
+    ).order_by('-created_at')
     
-    chart_labels = []
-    api_calls_data = []
-    data_usage_data = []
-    
-    current_date = start_date
-    while current_date <= end_date:
-        chart_labels.append(current_date.strftime('%b %d'))
-        
-        usage = usage_data.filter(date=current_date).first()
-        if usage:
-            api_calls_data.append(usage.api_calls)
-            data_usage_data.append(float(usage.data_downloaded_mb))
-        else:
-            api_calls_data.append(0)
-            data_usage_data.append(0)
-        
-        current_date += timedelta(days=1)
+    # Check token limit
+    max_tokens = settings.JWT_TOKEN_LIMIT_PER_SUBSCRIPTION
+    can_create_more = tokens.count() < max_tokens
     
     context = {
         'subscription': subscription,
-        'chart_labels': json.dumps(chart_labels),
-        'api_calls_data': json.dumps(api_calls_data),
-        'data_usage_data': json.dumps(data_usage_data),
+        'tokens': tokens,
+        'can_generate_token': can_generate_token,
+        'can_create_more': can_create_more,
+        'max_tokens': max_tokens,
+        'tokens_used': tokens.count(),
     }
     
     return render(request, 'core/subscription_detail.html', context)
+
+@login_required
+def generate_token(request, subscription_id):
+    """Generate API token for specific subscription"""
+    subscription = get_object_or_404(
+        Subscription,
+        id=subscription_id,
+        user=request.user,
+        status='active'
+    )
+    
+    # Verify subscription is still valid
+    if subscription.expires_at <= timezone.now():
+        messages.error(request, 'Cannot generate token: Subscription has expired.')
+        return redirect('subscription_detail', pk=subscription_id)
+    
+    # Check token limit
+    active_tokens_count = UserToken.objects.filter(
+        subscription=subscription,
+        is_active=True
+    ).count()
+    
+    if active_tokens_count >= settings.JWT_TOKEN_LIMIT_PER_SUBSCRIPTION:
+        messages.error(
+            request, 
+            f'Maximum token limit reached ({settings.JWT_TOKEN_LIMIT_PER_SUBSCRIPTION}). '
+            'Please revoke an existing token first.'
+        )
+        return redirect('subscription_detail', pk=subscription_id)
+    
+    if request.method == 'POST':
+        token_name = request.POST.get('name', f'Token {active_tokens_count + 1}')
+        
+        # Create unique token ID
+        token_id = str(uuid.uuid4())
+        
+        # Build JWT payload
+        payload = {
+            'jti': token_id,  # JWT ID (unique identifier)
+            'user_id': request.user.id,
+            'username': request.user.username,
+            'email': request.user.email,
+            'subscription_id': subscription.id,
+            'product_id': subscription.product.id,
+            'product_name': subscription.product.name,
+            'api_calls_limit': subscription.product.api_calls_limit,
+            'data_limit_mb': subscription.product.data_limit_mb,
+            'tier': subscription.product.name.lower(),
+            'iat': int(datetime.utcnow().timestamp()),  # Issued at
+            'exp': int(subscription.expires_at.timestamp()),  # Expires with subscription
+        }
+        
+        # Generate JWT token
+        token_string = jwt.encode(
+            payload, 
+            settings.JWT_SECRET_KEY, 
+            algorithm=settings.JWT_ALGORITHM
+        )
+        
+        # Save to database
+        UserToken.objects.create(
+            user=request.user,
+            subscription=subscription,
+            name=token_name,
+            token=token_string,
+            token_id=token_id,
+            expires_at=subscription.expires_at
+        )
+        
+        messages.success(
+            request, 
+            f'✅ Token "{token_name}" generated successfully! '
+            f'Valid until {subscription.expires_at.strftime("%B %d, %Y at %I:%M %p")}'
+        )
+        
+        # Redirect back to subscription detail with token section in view
+        return redirect('subscription_detail', pk=subscription_id)
+    
+    # GET request - show generation form
+    context = {
+        'subscription': subscription,
+        'active_tokens_count': active_tokens_count,
+        'max_tokens': settings.JWT_TOKEN_LIMIT_PER_SUBSCRIPTION,
+    }
+    return render(request, 'core/generate_token.html', context)
+
+@login_required
+def revoke_token(request, token_id):
+    """Revoke (deactivate) a specific token"""
+    token = get_object_or_404(
+        UserToken,
+        id=token_id,
+        user=request.user,
+        is_active=True
+    )
+    
+    if request.method == 'POST':
+        token.is_active = False
+        token.save()
+        
+        messages.success(
+            request,
+            f'🗑️ Token "{token.name}" has been revoked and can no longer be used.'
+        )
+        
+        return redirect('subscription_detail', pk=token.subscription.id)
+    
+    # Show confirmation page
+    context = {'token': token}
+    return render(request, 'core/revoke_token_confirm.html', context)
+
+@login_required
+def refresh_token(request, token_id):
+    """Refresh an existing token (deactivate old, create new)"""
+    old_token = get_object_or_404(
+        UserToken,
+        id=token_id,
+        user=request.user
+    )
+    
+    subscription = old_token.subscription
+    
+    # Verify subscription is still active
+    if subscription.status != 'active' or subscription.expires_at <= timezone.now():
+        messages.error(request, 'Cannot refresh token: Subscription is no longer active.')
+        return redirect('subscription_detail', pk=subscription.id)
+    
+    if request.method == 'POST':
+        # Deactivate old token
+        old_token.is_active = False
+        old_token.save()
+        
+        # Generate new token with same name
+        token_id_new = str(uuid.uuid4())
+        
+        payload = {
+            'jti': token_id_new,
+            'user_id': request.user.id,
+            'username': request.user.username,
+            'email': request.user.email,
+            'subscription_id': subscription.id,
+            'product_id': subscription.product.id,
+            'product_name': subscription.product.name,
+            'api_calls_limit': subscription.product.api_calls_limit,
+            'data_limit_mb': subscription.product.data_limit_mb,
+            'tier': subscription.product.name.lower(),
+            'iat': int(datetime.utcnow().timestamp()),
+            'exp': int(subscription.expires_at.timestamp()),
+        }
+        
+        token_string = jwt.encode(
+            payload,
+            settings.JWT_SECRET_KEY,
+            algorithm=settings.JWT_ALGORITHM
+        )
+        
+        # Create new token
+        UserToken.objects.create(
+            user=request.user,
+            subscription=subscription,
+            name=old_token.name,  # Keep same name
+            token=token_string,
+            token_id=token_id_new,
+            expires_at=subscription.expires_at
+        )
+        
+        messages.success(
+            request,
+            f'🔄 Token "{old_token.name}" has been refreshed successfully!'
+        )
+        
+        return redirect('subscription_detail', pk=subscription.id)
+    
+    context = {'token': old_token}
+    return render(request, 'core/refresh_token_confirm.html', context)
 
 @login_required
 def pause_subscription(request, pk):

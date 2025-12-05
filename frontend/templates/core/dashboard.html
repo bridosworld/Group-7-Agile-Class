@@ -556,9 +556,27 @@
                                 </div>
                             </td>
                             <td>
-                                <a href="{% url 'subscription_detail' subscription.pk %}" class="action-btn">
-                                    <i class="bi bi-eye"></i> View
-                                </a>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <a 
+                                        href="{% url 'subscription_detail' subscription.id %}" 
+                                        style="padding: 0.6rem 1rem; background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue)); color: white; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;"
+                                        onmouseover="this.style.transform='translateY(-2px)'"
+                                        onmouseout="this.style.transform='translateY(0)'"
+                                    >
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    
+                                    {% if subscription.status == 'active' %}
+                                    <a 
+                                        href="{% url 'subscription_detail' subscription.id %}#tokens" 
+                                        style="padding: 0.6rem 1rem; background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;"
+                                        onmouseover="this.style.background='rgba(16, 185, 129, 0.3)'"
+                                        onmouseout="this.style.background='rgba(16, 185, 129, 0.2)'"
+                                    >
+                                        <i class="bi bi-key"></i> API Tokens
+                                    </a>
+                                    {% endif %}
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -576,13 +594,6 @@
                 {% endif %}
             </div>
         </div>
-    </div>
-
-    <!-- API Tokens Button -->
-    <div class="api-tokens-section" style="margin-top: 2rem;">
-        <a href="{% url 'api_tokens' %}" class="action-btn">
-            <i class="bi bi-key"></i> API Tokens
-        </a>
     </div>
 </div>
 {% endblock %}
