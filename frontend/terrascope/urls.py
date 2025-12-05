@@ -18,9 +18,22 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from two_factor.views import LoginView, SetupView, SetupCompleteView, QRGeneratorView, BackupTokensView, ProfileView, DisableView  # type: ignore
+
+# Two-factor auth URLs with namespace
+two_factor_patterns = [
+    path('login/', LoginView.as_view(), name='login'),
+    path('two_factor/setup/', SetupView.as_view(), name='setup'),
+    path('two_factor/qrcode/', QRGeneratorView.as_view(), name='qr'),
+    path('two_factor/setup/complete/', SetupCompleteView.as_view(), name='setup_complete'),
+    path('two_factor/backup/tokens/', BackupTokensView.as_view(), name='backup_tokens'),
+    path('two_factor/', ProfileView.as_view(), name='profile'),
+    path('two_factor/disable/', DisableView.as_view(), name='disable'),
+]
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('account/', include((two_factor_patterns, 'two_factor'))),
     path('', include('core.urls')),
 ]
 

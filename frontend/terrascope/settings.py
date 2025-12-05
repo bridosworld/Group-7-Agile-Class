@@ -38,7 +38,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.humanize',  # ← ADD THIS
+    'django.contrib.humanize',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_static',
+    'two_factor',
     'core',  # Custom app for TerraSCOPE geospatial observation management
 ]
 
@@ -48,6 +52,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.SubscriptionExpiryMiddleware',
@@ -144,6 +149,13 @@ STRIPE_WEBHOOK_SECRET = ''  # Optional, for webhooks
 # After payment success, redirect here
 PAYMENT_SUCCESS_URL = 'http://127.0.0.1:8000/payment/success/'
 PAYMENT_CANCEL_URL = 'http://127.0.0.1:8000/payment/cancel/'
+
+# Two-Factor Authentication Settings
+TWO_FACTOR_PATCH_ADMIN = True
+TWO_FACTOR_CALL_GATEWAY = None
+TWO_FACTOR_SMS_GATEWAY = None
+LOGIN_URL = 'account/login/'
+LOGIN_REDIRECT_URL = 'dashboard'
 
 # JWT Configuration
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-super-secret-jwt-key-change-in-production')

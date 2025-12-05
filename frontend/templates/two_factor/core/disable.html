@@ -1,0 +1,48 @@
+{% extends 'two_factor/_base.html' %}
+{% load i18n %}
+
+{% block two_factor_content %}
+<div class="two-factor-header">
+    <h1 class="two-factor-title" style="color: #ef4444;">
+        <i class="bi bi-shield-x"></i>
+        Disable Two-Factor Authentication
+    </h1>
+    <p class="two-factor-subtitle">
+        Remove the extra security layer from your account
+    </p>
+</div>
+
+<div class="error-message">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <strong>Warning:</strong> Disabling two-factor authentication will make your account less secure. You will only need your password to log in.
+</div>
+
+{% if form.errors %}
+    <div class="error-message">
+        <i class="bi bi-x-circle"></i>
+        Please correct the errors below.
+    </div>
+{% endif %}
+
+<form method="post" action="">
+    {% csrf_token %}
+    
+    <div class="info-box">
+        <p>
+            Are you sure you want to disable two-factor authentication? This will remove all authenticator devices and backup codes from your account.
+        </p>
+    </div>
+
+    <div class="btn-group">
+        <a href="{% url 'two_factor:profile' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i>
+            Cancel
+        </a>
+        
+        <button type="submit" class="btn btn-cancel">
+            <i class="bi bi-shield-x"></i>
+            Yes, Disable 2FA
+        </button>
+    </div>
+</form>
+{% endblock %}
