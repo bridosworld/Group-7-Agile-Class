@@ -156,6 +156,8 @@ LOGOUT_REDIRECT_URL = 'home'
 
 # OTP Settings - increase tolerance for time drift
 OTP_TOTP_TOLERANCE = 2  # Allow 2 steps before/after (60 seconds window total)
+LOGIN_URL = 'account/login/'
+LOGIN_REDIRECT_URL = 'dashboard'
 
 # JWT Configuration
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-super-secret-jwt-key-change-in-production')

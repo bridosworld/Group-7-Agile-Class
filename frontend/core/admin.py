@@ -2,6 +2,10 @@ from django.contrib import admin
 from django.utils.html import format_html
 from .models import Product, Subscription, SubscriptionUsage, UserToken, UserProfile
 
+from .models import Product, Subscription, SubscriptionUsage, UserToken, UserProfile
+from .models import Product, Subscription, SubscriptionUsage, UserToken
+
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = ['name', 'price_10_minutes', 'price_2_hours', 'price_1_week', 'api_calls_limit', 'data_limit_mb', 'is_active']
