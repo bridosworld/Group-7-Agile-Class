@@ -484,60 +484,107 @@
     }
     </script>
 
+    <!-- SUBSCRIPTION INFORMATION SECTION -->
+    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 2rem; margin-bottom: 2rem;">
+        <h2 style="font-size: 1.8rem; font-weight: 700; color: var(--text-light); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+            <i class="bi bi-info-circle" style="color: var(--primary-blue);"></i>
+            Subscription Information
+        </h2>
+
+        <!-- Status -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-flag" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Status</span>
+            </div>
+            <div>
+                {% if subscription.status == 'active' and subscription.expires_at > now %}
+                    <span style="padding: 0.5rem 1rem; background: rgba(16, 185, 129, 0.2); color: #10b981; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Active
+                    </span>
+                {% elif subscription.status == 'expired' or subscription.expires_at <= now %}
+                    <span style="padding: 0.5rem 1rem; background: rgba(239, 68, 68, 0.2); color: #ef4444; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-x-circle-fill"></i>
+                        Expired
+                    </span>
+                {% elif subscription.status == 'paused' %}
+                    <span style="padding: 0.5rem 1rem; background: rgba(251, 191, 36, 0.2); color: #fbbf24; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-pause-circle-fill"></i>
+                        Paused
+                    </span>
+                {% else %}
+                    <span style="padding: 0.5rem 1rem; background: rgba(107, 114, 128, 0.2); color: #6b7280; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-dash-circle-fill"></i>
+                        {{ subscription.status|title }}
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Start Date -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-calendar-check" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Start Date</span>
+            </div>
+            <div style="color: var(--text-light); font-weight: 600;">
+                {% if subscription.subscribed_at %}
+                    {{ subscription.subscribed_at|date:"F d, Y" }}
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">
+                        at {{ subscription.subscribed_at|date:"g:i A" }}
+                    </span>
+                {% else %}
+                    <span style="color: var(--text-muted);">Not available</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Expiry Date -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-calendar-x" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Expiry Date</span>
+            </div>
+            <div style="color: var(--text-light); font-weight: 600;">
+                {{ subscription.expires_at|date:"F d, Y" }}
+                <span style="font-size: 0.85rem; color: var(--text-muted);">
+                    at {{ subscription.expires_at|date:"g:i A" }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Total Cost -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-currency-pound" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Total Cost</span>
+            </div>
+            <div style="color: var(--text-light); font-weight: 600; font-size: 1.2rem;">
+                £{{ subscription.product.price_10_minutes|floatformat:2 }}
+            </div>
+        </div>
+
+        <!-- Payment ID -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-credit-card" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Payment ID</span>
+            </div>
+            <div style="color: var(--text-light); font-weight: 600; font-family: 'Courier New', monospace; font-size: 0.9rem;">
+                {% if subscription.stripe_payment_intent_id %}
+                    {{ subscription.stripe_payment_intent_id }}
+                {% else %}
+                    <span style="color: var(--text-muted);">Not available</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content Grid -->
     <div class="detail-grid">
         <!-- Left Column: Subscription Info -->
         <div>
-            <div class="detail-card">
-                <h2 class="card-title">
-                    <i class="bi bi-info-circle"></i>
-                    Subscription Information
-                </h2>
-                
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">
-                            <i class="bi bi-flag"></i>
-                            Status
-                        </span>
-                        <span class="status-badge status-{{ subscription.status }}">
-                            {{ subscription.get_status_display }}
-                        </span>
-                    </div>
-
-                    <div class="info-item">
-                        <span class="info-label">
-                            <i class="bi bi-calendar-check"></i>
-                            Start Date
-                        </span>
-                        <span class="info-value">{{ subscription.created_at|date:"F d, Y" }}</span>
-                    </div>
-
-                    <div class="info-item">
-                        <span class="info-label">
-                            <i class="bi bi-calendar-x"></i>
-                            Expiry Date
-                        </span>
-                        <span class="info-value">{{ subscription.expires_at|date:"F d, Y" }}</span>
-                    </div>
-
-                    <div class="info-item">
-                        <span class="info-label">
-                            <i class="bi bi-cash-stack"></i>
-                            Total Cost
-                        </span>
-                        <span class="info-value">£{{ subscription.total_cost|floatformat:2 }}</span>
-                    </div>
-
-                    <div class="info-item">
-                        <span class="info-label">
-                            <i class="bi bi-credit-card"></i>
-                            Payment ID
-                        </span>
-                        <span class="info-value" style="font-size: 0.85rem;">{{ subscription.stripe_payment_intent_id|truncatechars:20 }}</span>
-                    </div>
-                </div>
-            </div>
 
             <!-- Usage Statistics -->
             <div class="detail-card" style="margin-top: 2rem;">

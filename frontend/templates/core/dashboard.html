@@ -404,41 +404,90 @@
     </div>
 
     <!-- Stats Grid -->
-    <div class="stats-grid">
-        <!-- Total Spent -->
-        <div class="stat-card">
-            <div class="stat-icon blue">
-                <i class="bi bi-currency-pound"></i>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+        <!-- TOTAL SPENT -->
+        <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05)); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 20px; padding: 1.5rem; transition: transform 0.3s; cursor: pointer;"
+             onmouseover="this.style.transform='translateY(-5px)'"
+             onmouseout="this.style.transform='translateY(0)'">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-currency-pound" style="font-size: 1.5rem; color: white;"></i>
+                </div>
             </div>
-            <div class="stat-label">Total Spent</div>
-            <div class="stat-value">£{{ total_spent|floatformat:2 }}</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                Total Spent
+            </div>
+            <div style="font-size: 2rem; font-weight: 700; color: var(--text-light);">
+                £{{ total_spent|floatformat:2 }}
+            </div>
         </div>
 
-        <!-- Active Subscriptions -->
-        <div class="stat-card">
-            <div class="stat-icon green">
-                <i class="bi bi-check-circle"></i>
+        <!-- ACTIVE SUBSCRIPTIONS -->
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05)); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 20px; padding: 1.5rem; transition: transform 0.3s; cursor: pointer;"
+             onmouseover="this.style.transform='translateY(-5px)'"
+             onmouseout="this.style.transform='translateY(0)'">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-check-circle" style="font-size: 1.5rem; color: white;"></i>
+                </div>
             </div>
-            <div class="stat-label">Active Subscriptions</div>
-            <div class="stat-value">{{ active_subscriptions }}</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                Active Subscriptions
+            </div>
+            <div style="font-size: 2rem; font-weight: 700; color: var(--text-light);">
+                {{ active_subscriptions }}
+            </div>
         </div>
 
-        <!-- Total API Calls -->
-        <div class="stat-card">
-            <div class="stat-icon orange">
-                <i class="bi bi-lightning-charge"></i>
+        <!-- EXPIRED SUBSCRIPTIONS (NEW) -->
+        <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05)); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 20px; padding: 1.5rem; transition: transform 0.3s; cursor: pointer;"
+             onmouseover="this.style.transform='translateY(-5px)'"
+             onmouseout="this.style.transform='translateY(0)'">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-x-circle" style="font-size: 1.5rem; color: white;"></i>
+                </div>
             </div>
-            <div class="stat-label">Total API Calls</div>
-            <div class="stat-value">{{ total_api_calls|intcomma }}</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                Expired Subscriptions
+            </div>
+            <div style="font-size: 2rem; font-weight: 700; color: var(--text-light);">
+                {{ expired_subscriptions }}
+            </div>
         </div>
 
-        <!-- Data Used -->
-        <div class="stat-card">
-            <div class="stat-icon purple">
-                <i class="bi bi-database"></i>
+        <!-- TOTAL API CALLS -->
+        <div style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.05)); border: 1px solid rgba(251, 191, 36, 0.2); border-radius: 20px; padding: 1.5rem; transition: transform 0.3s; cursor: pointer;"
+             onmouseover="this.style.transform='translateY(-5px)'"
+             onmouseout="this.style.transform='translateY(0)'">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #fbbf24, #f59e0b); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-lightning-charge" style="font-size: 1.5rem; color: white;"></i>
+                </div>
             </div>
-            <div class="stat-label">Data Used</div>
-            <div class="stat-value">{{ total_data_used|floatformat:2 }} MB</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                Total API Calls
+            </div>
+            <div style="font-size: 2rem; font-weight: 700; color: var(--text-light);">
+                {{ total_api_calls }}
+            </div>
+        </div>
+
+        <!-- DATA USED (Move to second row on mobile) -->
+        <div style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.05)); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 20px; padding: 1.5rem; transition: transform 0.3s; cursor: pointer;"
+             onmouseover="this.style.transform='translateY(-5px)'"
+             onmouseout="this.style.transform='translateY(0)'">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-database" style="font-size: 1.5rem; color: white;"></i>
+                </div>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                Data Used
+            </div>
+            <div style="font-size: 2rem; font-weight: 700; color: var(--text-light);">
+                {{ total_data_used|floatformat:2 }} MB
+            </div>
         </div>
     </div>
 
@@ -485,6 +534,39 @@
         </div>
     </div>
 
+    <!-- Subscription Overview Card -->
+    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 1.5rem; margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h3 style="font-size: 1.2rem; font-weight: 600; color: var(--text-light); margin-bottom: 0.5rem;">
+                    Subscription Overview
+                </h3>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">
+                    You have <strong style="color: var(--primary-blue);">{{ total_subscriptions }}</strong> total subscription(s)
+                </p>
+            </div>
+            
+            <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                <div style="text-align: center;">
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">Active</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">{{ active_subscriptions }}</div>
+                </div>
+                
+                <div style="text-align: center;">
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">Expired</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #ef4444;">{{ expired_subscriptions }}</div>
+                </div>
+                
+                {% if paused_subscriptions > 0 %}
+                <div style="text-align: center;">
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">Paused</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #fbbf24;">{{ paused_subscriptions }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
     <!-- Subscriptions Table -->
     <div class="subscriptions-section">
         <h2 class="section-title">
@@ -520,18 +602,31 @@
                                 <strong>{{ subscription.product.name }}</strong>
                             </td>
                             <td>
-                                <span class="status-badge {{ subscription.status }}">
-                                    {% if subscription.status == 'active' %}
+                                {% if subscription.status == 'active' and subscription.expires_at > now %}
+                                    <span style="padding: 0.5rem 1rem; background: rgba(16, 185, 129, 0.2); color: #10b981; border-radius: 20px; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem;">
                                         <i class="bi bi-check-circle-fill"></i>
-                                    {% elif subscription.status == 'paused' %}
-                                        <i class="bi bi-pause-circle-fill"></i>
-                                    {% elif subscription.status == 'cancelled' %}
+                                        Active
+                                    </span>
+                                {% elif subscription.status == 'expired' or subscription.expires_at <= now %}
+                                    <span style="padding: 0.5rem 1rem; background: rgba(239, 68, 68, 0.2); color: #ef4444; border-radius: 20px; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem;">
                                         <i class="bi bi-x-circle-fill"></i>
-                                    {% else %}
-                                        <i class="bi bi-clock-fill"></i>
-                                    {% endif %}
-                                    {{ subscription.get_status_display }}
-                                </span>
+                                        Expired
+                                    </span>
+                                {% elif subscription.status == 'paused' %}
+                                    <span style="padding: 0.5rem 1rem; background: rgba(251, 191, 36, 0.2); color: #fbbf24; border-radius: 20px; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                        <i class="bi bi-pause-circle-fill"></i>
+                                        Paused
+                                    </span>
+                                {% elif subscription.status == 'cancelled' %}
+                                    <span style="padding: 0.5rem 1rem; background: rgba(107, 114, 128, 0.2); color: #6b7280; border-radius: 20px; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                        <i class="bi bi-dash-circle-fill"></i>
+                                        Cancelled
+                                    </span>
+                                {% else %}
+                                    <span style="padding: 0.5rem 1rem; background: rgba(107, 114, 128, 0.2); color: #6b7280; border-radius: 20px; font-weight: 600; font-size: 0.85rem;">
+                                        {{ subscription.status|title }}
+                                    </span>
+                                {% endif %}
                             </td>
                             <td>
                                 {{ subscription.expires_at|date:"M d, Y" }}
