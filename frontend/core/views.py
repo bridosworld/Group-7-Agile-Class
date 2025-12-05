@@ -44,6 +44,14 @@ def create_checkout_session(request, product_id):
         product = get_object_or_404(Product, pk=product_id, is_active=True)
         duration = request.POST.get('duration', '10_minutes')
         
+        # Check if Stripe is configured
+        if not settings.STRIPE_SECRET_KEY or settings.STRIPE_SECRET_KEY == '':
+            messages.error(
+                request, 
+                'Payment system is not configured. Please contact the administrator.'
+            )
+            return redirect('product_detail', pk=product_id)
+
         # Calculate price based on duration
         if duration == '10_minutes':
             amount = float(product.price_10_minutes)
@@ -105,14 +113,25 @@ def payment_success(request):
     product_id = request.GET.get('product_id')
     duration = request.GET.get('duration', '10_minutes')
     
-    if not session_id or not product_id:
+    if not product_id:
         messages.error(request, 'Invalid payment session')
         return redirect('product_list')
     
     try:
-        session = stripe.checkout.Session.retrieve(session_id)
+        # Verify Stripe session if session_id is provided
+        if session_id:
+            if not settings.STRIPE_SECRET_KEY or settings.STRIPE_SECRET_KEY == '':
+                messages.error(request, 'Payment system not configured')
+                return redirect('product_list')
+            
+            session = stripe.checkout.Session.retrieve(session_id)
+            
+            if session.payment_status != 'paid':
+                messages.error(request, 'Payment was not completed successfully')
+                return redirect('product_detail', pk=product_id)
         
-        if session.payment_status == 'paid':
+        # Create subscription (works for both Stripe payments and demo mode)
+        if True:  # Always create subscription if we reach here
             product = get_object_or_404(Product, pk=product_id)
             
             # Duration map
@@ -165,9 +184,6 @@ def payment_success(request):
                 'subscription': subscription,
                 'product': product,
             })
-        else:
-            messages.error(request, 'Payment was not completed successfully')
-            return redirect('product_detail', pk=product_id)
     
     except stripe.error.StripeError as e:
         messages.error(request, f'Payment verification error: {str(e)}')
@@ -192,8 +208,21 @@ def dashboard(request):
     
     subscriptions = Subscription.objects.filter(user=user).select_related('product').order_by('-subscribed_at')
     
+    # Auto-update expired subscriptions (middleware does this too, but double-check here)
+    now = timezone.now()
+    Subscription.objects.filter(
+        user=user,
+        status='active',
+        expires_at__lte=now
+    ).update(status='expired')
+    
+    # Refresh subscriptions after update
+    subscriptions = Subscription.objects.filter(user=user).select_related('product').order_by('-subscribed_at')
+    
     total_spent = subscriptions.aggregate(total=Sum('total_cost'))['total'] or 0
-    active_subscriptions = subscriptions.filter(status='active').count()
+    active_subscriptions = subscriptions.filter(status='active', expires_at__gt=now).count()
+    expired_subscriptions = subscriptions.filter(status='expired').count()
+    paused_subscriptions = subscriptions.filter(status='paused').count()
     total_api_calls = subscriptions.aggregate(total=Sum('api_calls_made'))['total'] or 0
     total_data_used = subscriptions.aggregate(total=Sum('data_downloaded_mb'))['total'] or 0
     
@@ -237,8 +266,12 @@ def dashboard(request):
         'subscriptions': subscriptions,
         'total_spent': total_spent,
         'active_subscriptions': active_subscriptions,
+        'expired_subscriptions': expired_subscriptions,
+        'paused_subscriptions': paused_subscriptions,
+        'total_subscriptions': subscriptions.count(),
         'total_api_calls': total_api_calls,
         'total_data_used': total_data_used,
+        'now': now,
         'chart_labels': json.dumps(chart_labels),
         'api_calls_data': json.dumps(api_calls_data),
         'data_usage_data': json.dumps(data_usage_data),
@@ -252,6 +285,17 @@ def subscription_detail(request, pk):
     """Display subscription details with token management"""
     subscription = get_object_or_404(Subscription, pk=pk, user=request.user)
     
+    # Check actual subscription status based on expiry
+    now = timezone.now()
+    if subscription.expires_at <= now and subscription.status == 'active':
+        # Auto-update expired subscriptions
+        subscription.status = 'expired'
+        subscription.save()
+    
+    # Check if user can generate tokens
+    can_generate_token = (
+        subscription.status == 'active' and 
+        subscription.expires_at >
     # Check if user can generate tokens
     can_generate_token = (
         subscription.status == 'active' and 
@@ -275,6 +319,7 @@ def subscription_detail(request, pk):
         'can_create_more': can_create_more,
         'max_tokens': max_tokens,
         'tokens_used': tokens.count(),
+        'now': timezone.now(),
     }
     
     return render(request, 'core/subscription_detail.html', context)

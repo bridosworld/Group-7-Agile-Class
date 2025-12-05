@@ -1,6 +1,6 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
-from . import views
+from import views
 
 urlpatterns = [
     # Home and Products
@@ -25,6 +25,11 @@ urlpatterns = [
     path('subscription/<int:pk>/resume/', views.resume_subscription, name='resume_subscription'),
     path('subscription/<int:pk>/cancel/', views.cancel_subscription, name='cancel_subscription'),
   
+    # Token Management URLs
+    path('subscription/<int:subscription_id>/generate-token/', views.generate_token, name='generate_token'),
+    path('token/<int:token_id>/revoke/', views.revoke_token, name='revoke_token'),
+    path('token/<int:token_id>/refresh/', views.refresh_token, name='refresh_token'),
+
     # Token Management URLs
     path('subscription/<int:subscription_id>/generate-token/', views.generate_token, name='generate_token'),
     path('token/<int:token_id>/revoke/', views.revoke_token, name='revoke_token'),
