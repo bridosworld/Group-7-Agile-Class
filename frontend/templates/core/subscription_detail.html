@@ -300,6 +300,9 @@
                 </form>
                 
                 <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+
+                <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+                <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">    
                     <i class="bi bi-info-circle"></i>
                     Tokens used: <strong>{{ tokens_used }}/{{ max_tokens }}</strong>
                     {% if not can_create_more %}
@@ -461,6 +464,416 @@
                     Renew Subscription
                 </a>
                 {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Copy Token JavaScript -->
+    <script>
+    function copyToken(tokenId, tokenString) {
+        // Copy to clipboard
+        navigator.clipboard.writeText(tokenString).then(function() {
+            // Show success feedback
+            const feedback = document.getElementById('copy-feedback-' + tokenId);
+            feedback.style.display = 'block';
+            
+            // Hide after 3 seconds
+            setTimeout(function() {
+                feedback.style.display = 'none';
+            }, 3000);
+        }).catch(function(err) {
+            alert('Failed to copy token: ' + err);
+        });
+    }
+    </script>
+
+    <!-- Main Content Grid -->
+    <div class="detail-grid">
+        <!-- Left Column: Subscription Info -->
+        <div>
+            <div class="detail-card">
+                <h2 class="card-title">
+                    <i class="bi bi-info-circle"></i>
+                    Tokens used: <strong>{{ tokens_used }}/{{ max_tokens }}</strong>
+                    {% if not can_create_more %}
+                    <span style="color: #f59e0b;">• Revoke an existing token to generate a new one</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Active Tokens List -->
+            {% if tokens %}
+            <div style="margin-top: 2rem;">
+                <h3 style="font-size: 1.3rem; font-weight: 600; color: var(--text-light); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="bi bi-shield-check" style="color: #10b981;"></i>
+                    Active Tokens ({{ tokens.count }})
+                </h3>
+                
+                {% for token in tokens %}
+                <div style="background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;">
+                    <!-- Token Header -->
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <h4 style="font-size: 1.1rem; font-weight: 600; color: var(--text-light); margin-bottom: 0.5rem;">
+                                {{ token.name }}
+                            </h4>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">
+                                Created: {{ token.created_at|date:"M d, Y at g:i A" }}
+                            </div>
+                        </div>
+                        
+                        <!-- Token Status Badge -->
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            {% if token.is_expired %}
+                            <span style="padding: 0.4rem 0.8rem; background: rgba(239, 68, 68, 0.2); color: #ef4444; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
+                                <i class="bi bi-x-circle"></i> Expired
+                            </span>
+                            {% else %}
+                            <span style="padding: 0.4rem 0.8rem; background: rgba(16, 185, 129, 0.2); color: #10b981; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
+                                <i class="bi bi-check-circle"></i> Active
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Token String -->
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.85rem;">
+                            Token:
+                        </label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <code id="token-{{ token.id }}" style="flex: 1; padding: 0.75rem; background: var(--bg-darker); border: 1px solid var(--border-color); border-radius: 8px; color: var(--primary-blue); font-size: 0.85rem; overflow-x: auto; white-space: nowrap;">{{ token.token }}</code>
+                            <button 
+                                onclick="copyToken('{{ token.id }}', '{{ token.token }}')"
+                                style="padding: 0.75rem 1rem; background: rgba(59, 130, 246, 0.2); color: var(--primary-blue); border: 1px solid var(--primary-blue); border-radius: 8px; cursor: pointer; transition: all 0.2s; white-space: nowrap;"
+                                onmouseover="this.style.background='rgba(59, 130, 246, 0.3)'"
+                                onmouseout="this.style.background='rgba(59, 130, 246, 0.2)'"
+                            >
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                        <div id="copy-feedback-{{ token.id }}" style="margin-top: 0.5rem; font-size: 0.85rem; color: #10b981; display: none;">
+                            <i class="bi bi-check-circle-fill"></i> Copied to clipboard!
+                        </div>
+                    </div>
+                    
+                    <!-- Token Metadata -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; padding: 1rem; background: rgba(255, 255, 255, 0.02); border-radius: 8px;">
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">Expires:</div>
+                            <div style="font-weight: 600; color: var(--text-light);">
+                                {{ token.expires_at|date:"M d, Y" }}
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">
+                                    ({{ token.days_until_expiry }} days left)
+                                </span>
+                            </div>
+                        </div>
+                        
+                        {% if token.last_used %}
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">Last Used:</div>
+                            <div style="font-weight: 600; color: var(--text-light);">
+                                {{ token.last_used|timesince }} ago
+                            </div>
+                        </div>
+                        {% else %}
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">Last Used:</div>
+                            <div style="font-weight: 600; color: #6b7280;">
+                                Never used
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Token Actions -->
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <form method="POST" action="{% url 'refresh_token' token.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button 
+                                type="submit"
+                                style="padding: 0.6rem 1.2rem; background: rgba(59, 130, 246, 0.1); color: var(--primary-blue); border: 1px solid var(--primary-blue); border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem;"
+                                onmouseover="this.style.background='rgba(59, 130, 246, 0.2)'"
+                                onmouseout="this.style.background='rgba(59, 130, 246, 0.1)'"
+                            >
+                                <i class="bi bi-arrow-clockwise"></i>
+                                Refresh Token
+                            </button>
+                        </form>
+                        
+                        <form method="POST" action="{% url 'revoke_token' token.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button 
+                                type="submit"
+                                onclick="return confirm('Are you sure you want to revoke this token? This action cannot be undone.')"
+                                style="padding: 0.6rem 1.2rem; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid #ef4444; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem;"
+                                onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'"
+                                onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'"
+                            >
+                                <i class="bi bi-trash"></i>
+                                Revoke Token
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 2rem; background: rgba(255, 255, 255, 0.02); border-radius: 12px;">
+                <i class="bi bi-key" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem; display: block;"></i>
+                <p style="color: var(--text-muted); font-size: 1.1rem;">
+                    No tokens generated yet. Create your first token above.
+                </p>
+            </div>
+            {% endif %}
+            
+        {% else %}
+            <!-- Cannot Generate Token Message -->
+            <div style="text-align: center; padding: 2rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px;">
+                <i class="bi bi-lock" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem; display: block;"></i>
+                <h3 style="font-size: 1.3rem; font-weight: 600; color: var(--text-light); margin-bottom: 0.5rem;">
+                    API Token Generation Unavailable
+                </h3>
+                <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+                    {% if subscription.status != 'active' %}
+                        Your subscription is currently <strong style="color: #ef4444;">{{ subscription.status }}</strong>.
+                    {% else %}
+                        Your subscription has expired.
+                    {% endif %}
+                    API token generation requires an active, paid subscription.
+                </p>
+                
+                {% if subscription.status == 'expired' %}
+                <a 
+                    href="{% url 'product_detail' subscription.product.id %}"
+                    style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue)); color: white; border-radius: 8px; text-decoration: none; font-weight: 600; transition: transform 0.2s;"
+                    onmouseover="this.style.transform='translateY(-2px)'"
+                    onmouseout="this.style.transform='translateY(0)'"
+                >
+                    <i class="bi bi-arrow-repeat"></i>
+                    Renew Subscription
+                </a>
+                {% endif %}
+            </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Copy Token JavaScript -->
+    <script>
+    function copyToken(tokenId, tokenString) {
+        // Copy to clipboard
+        navigator.clipboard.writeText(tokenString).then(function() {
+            // Show success feedback
+            const feedback = document.getElementById('copy-feedback-' + tokenId);
+            feedback.style.display = 'block';
+            
+            // Hide after 3 seconds
+            setTimeout(function() {
+                feedback.style.display = 'none';
+            }, 3000);
+        }).catch(function(err) {
+            alert('Failed to copy token: ' + err);
+        });
+    }
+    </script>
+
+    <!-- SUBSCRIPTION INFORMATION SECTION -->
+    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 2rem; margin-bottom: 2rem;">
+        <h2 style="font-size: 1.8rem; font-weight: 700; color: var(--text-light); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+            <i class="bi bi-info-circle" style="color: var(--primary-blue);"></i>
+            Subscription Information
+        </h2>
+
+        <!-- Status -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-flag" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Status</span>
+            </div>
+            <div>
+                {% if subscription.status == 'active' and subscription.expires_at > now %}
+                    <span style="padding: 0.5rem 1rem; background: rgba(16, 185, 129, 0.2); color: #10b981; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Active
+                    </span>
+                {% elif subscription.status == 'expired' or subscription.expires_at <= now %}
+                    <span style="padding: 0.5rem 1rem; background: rgba(239, 68, 68, 0.2); color: #ef4444; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-x-circle-fill"></i>
+                        Expired
+                    </span>
+                {% elif subscription.status == 'paused' %}
+                    <span style="padding: 0.5rem 1rem; background: rgba(251, 191, 36, 0.2); color: #fbbf24; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-pause-circle-fill"></i>
+                        Paused
+                    </span>
+                {% else %}
+                    <span style="padding: 0.5rem 1rem; background: rgba(107, 114, 128, 0.2); color: #6b7280; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-dash-circle-fill"></i>
+                        {{ subscription.status|title }}
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Start Date -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-calendar-check" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Start Date</span>
+            </div>
+            <div style="color: var(--text-light); font-weight: 600;">
+                {% if subscription.subscribed_at %}
+                    {{ subscription.subscribed_at|date:"F d, Y" }}
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">
+                        at {{ subscription.subscribed_at|date:"g:i A" }}
+                    </span>
+                {% else %}
+                    <span style="color: var(--text-muted);">Not available</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Expiry Date -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-calendar-x" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Expiry Date</span>
+            </div>
+            <div style="color: var(--text-light); font-weight: 600;">
+                {{ subscription.expires_at|date:"F d, Y" }}
+                <span style="font-size: 0.85rem; color: var(--text-muted);">
+                    at {{ subscription.expires_at|date:"g:i A" }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Total Cost -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-currency-pound" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Total Cost</span>
+            </div>
+            <div style="color: var(--text-light); font-weight: 600; font-size: 1.2rem;">
+                £{{ subscription.product.price_10_minutes|floatformat:2 }}
+            </div>
+        </div>
+
+        <!-- Payment ID -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-credit-card" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Payment ID</span>
+            </div>
+            <div style="color: var(--text-light); font-weight: 600; font-family: 'Courier New', monospace; font-size: 0.9rem;">
+                {% if subscription.stripe_payment_intent_id %}
+                    {{ subscription.stripe_payment_intent_id }}
+                {% else %}
+                    <span style="color: var(--text-muted);">Not available</span>
+                {% endif %}
+            </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Copy Token JavaScript -->
+    <script>
+    function copyToken(tokenId, tokenString) {
+        // Copy to clipboard
+        navigator.clipboard.writeText(tokenString).then(function() {
+            // Show success feedback
+            const feedback = document.getElementById('copy-feedback-' + tokenId);
+            feedback.style.display = 'block';
+            
+            // Hide after 3 seconds
+            setTimeout(function() {
+                feedback.style.display = 'none';
+            }, 3000);
+        }).catch(function(err) {
+            alert('Failed to copy token: ' + err);
+        });
+    }
+    </script>
+
+    <!-- SUBSCRIPTION INFORMATION SECTION -->
+    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; padding: 2rem; margin-bottom: 2rem;">
+        <h2 style="font-size: 1.8rem; font-weight: 700; color: var(--text-light); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+            <i class="bi bi-info-circle" style="color: var(--primary-blue);"></i>
+            Subscription Information
+        </h2>
+
+        <!-- Status -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-flag" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Status</span>
+            </div>
+            <div>
+                {% if subscription.status == 'active' and subscription.expires_at > now %}
+                    <span style="padding: 0.5rem 1rem; background: rgba(16, 185, 129, 0.2); color: #10b981; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Active
+                    </span>
+                {% elif subscription.status == 'expired' or subscription.expires_at <= now %}
+                    <span style="padding: 0.5rem 1rem; background: rgba(239, 68, 68, 0.2); color: #ef4444; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-x-circle-fill"></i>
+                        Expired
+                    </span>
+                {% elif subscription.status == 'paused' %}
+                    <span style="padding: 0.5rem 1rem; background: rgba(251, 191, 36, 0.2); color: #fbbf24; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-pause-circle-fill"></i>
+                        Paused
+                    </span>
+                {% else %}
+                    <span style="padding: 0.5rem 1rem; background: rgba(107, 114, 128, 0.2); color: #6b7280; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-dash-circle-fill"></i>
+                        {{ subscription.status|title }}
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Start Date -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-calendar-check" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Start Date</span>
+            </div>
+            <div style="color: var(--text-light); font-weight: 600;">
+                {% if subscription.subscribed_at %}
+                    {{ subscription.subscribed_at|date:"F d, Y" }}
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">
+                        at {{ subscription.subscribed_at|date:"g:i A" }}
+                    </span>
+                {% else %}
+                    <span style="color: var(--text-muted);">Not available</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Expiry Date -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-calendar-x" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Expiry Date</span>
+            </div>
+            <div style="color: var(--text-light); font-weight: 600;">
+                {{ subscription.expires_at|date:"F d, Y" }}
+                <span style="font-size: 0.85rem; color: var(--text-muted);">
+                    at {{ subscription.expires_at|date:"g:i A" }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Total Cost -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted);">
+                <i class="bi bi-currency-pound" style="font-size: 1.25rem;"></i>
+                <span style="font-weight: 500;">Total Cost</span>
+            </div>
+            <div style="color: var(--text-light); font-weight: 600; font-size: 1.2rem;">
+                £{{ subscription.product.price_10_minutes|floatformat:2 }}
+            </div>
             </div>
         {% endif %}
     </div>

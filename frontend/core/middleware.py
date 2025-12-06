@@ -22,7 +22,6 @@ class SubscriptionExpiryMiddleware:
         response = self.get_response(request)
         return response
 
-
 class Enforce2FAMiddleware:
     """Enforce 2FA setup for all authenticated users"""
     
