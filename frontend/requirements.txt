@@ -1,0 +1,22 @@
+# Django Framework
+Django==5.2.8
+
+# Two-Factor Authentication
+django-two-factor-auth==1.17.0
+django-otp==1.5.4
+qrcode==8.0
+
+# Payment Processing
+stripe==11.2.0
+
+# JWT Token Authentication
+PyJWT==2.10.1
+
+# Pillow for image handling (avatars, product images)
+Pillow==11.0.0
+
+# Database (SQLite included with Python, but PostgreSQL for production)
+# psycopg2-binary==2.9.9  # Uncomment for PostgreSQL
+
+# Utilities
+python-decouple==3.8  # For environment variables (optional but recommended)

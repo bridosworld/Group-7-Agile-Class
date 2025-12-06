@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import Product, Subscription, SubscriptionUsage, UserToken, UserProfile
-
 from .models import Product, Subscription, SubscriptionUsage, UserToken, UserProfile
 from .models import Product, Subscription, SubscriptionUsage, UserToken
 
