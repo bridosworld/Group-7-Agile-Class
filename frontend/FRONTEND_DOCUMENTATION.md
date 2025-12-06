@@ -813,59 +813,6 @@ python manage.py migrate --fake-initial
 python manage.py migrate
 ```
 
----
-
-## Support & Maintenance
-
-### Regular Maintenance Tasks
-
-1. **Weekly**:
-   - Review error logs
-   - Check subscription expiry updates
-   - Monitor API token usage
-
-2. **Monthly**:
-   - Database backup
-   - Update dependencies
-   - Review security patches
-
-3. **Quarterly**:
-   - Rotate JWT secrets
-   - Review and optimize queries
-   - Update documentation
-
----
-
 ## API Integration
 
 The Django frontend generates JWT tokens that are used to authenticate with the Flask backend API. See `DJANGO_FLASK_INTEGRATION.md` for complete integration documentation.
-
----
-
-## Additional Resources
-
-- **Django Documentation**: https://docs.djangoproject.com/
-- **Stripe API Docs**: https://stripe.com/docs/api
-- **django-two-factor-auth**: https://github.com/jazzband/django-two-factor-auth
-- **JWT Docs**: https://pyjwt.readthedocs.io/
-
----
-
-## Contributing
-
-1. Create feature branch
-2. Make changes
-3. Write/update tests
-4. Submit pull request
-
----
-
-## License
-
-[Your License Here]
-
----
-
-## Contact
-
-For support: [your-email@example.com]
