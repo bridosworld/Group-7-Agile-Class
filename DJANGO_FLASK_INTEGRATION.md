@@ -325,19 +325,3 @@ curl http://127.0.0.1:5000/health
 # Test with a real token from Django
 curl -H "Authorization: Bearer <YOUR_TOKEN>" http://127.0.0.1:5000/api/me
 ```
-
-## Future Enhancements
-
-1. **Rate Limiting**: Track API usage against subscription limits
-2. **Shared Database**: Point Flask to Django's database for real-time subscription checks
-3. **Webhook Integration**: Notify Flask when subscriptions are cancelled
-4. **API Analytics**: Track usage statistics per user/subscription
-5. **Token Revocation**: Implement token blacklist for revoked tokens
-
-## Support
-
-For issues or questions:
-- Check the Django admin panel for user/subscription status
-- Check Flask console for error logs
-- Verify JWT_SECRET_KEY matches in both applications
-- Ensure both servers are running on correct ports
