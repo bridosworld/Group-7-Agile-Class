@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"name": "Frontend (Django)",
+			"path": "frontend"
+		},
+		{
+			"name": "Backend (Flask)",
+			"path": "backend"
+		}
+	],
+	"settings": {
+		"python.analysis.autoSearchPaths": true,
+		"python.analysis.diagnosticMode": "workspace",
+		"files.exclude": {
+			"**/__pycache__": true,
+			"**/*.pyc": true
+		}
+	}
+}
